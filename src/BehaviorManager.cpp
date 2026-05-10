@@ -135,9 +135,9 @@ namespace Loyalty {
                 }
             }
 
-            // Animasyon Bug'ını Düzelt: IdleForceDefaultState silahı elde yapıştırıyor.
-            // Sadece WeapUnequip göndererek silahı kınına sokmasını sağlıyoruz.
-            a_actor->NotifyAnimationGraph("WeapUnequip");
+            // Animasyon Bug'ını Düzelt: Animated Armoury gibi modlar özel animasyonlar kullandığı için
+            // standart WeapUnequip bazen yetersiz kalabiliyor. Engine'in kendi fonksiyonunu kullanalım.
+            a_actor->DrawWeaponMagicHands(false);
 
             RE::DebugNotification("NPC is now your loyal teammate.");
             
