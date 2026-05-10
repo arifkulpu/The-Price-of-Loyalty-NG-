@@ -139,10 +139,6 @@ namespace Loyalty {
             // Sadece WeapUnequip göndererek silahı kınına sokmasını sağlıyoruz.
             a_actor->NotifyAnimationGraph("WeapUnequip");
 
-            if (player) {
-                a_actor->MoveTo(player);
-            }
-
             RE::DebugNotification("NPC is now your loyal teammate.");
             
             // Trigger Trait Behaviors
