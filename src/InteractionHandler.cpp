@@ -59,15 +59,29 @@ namespace Loyalty {
             try {
                 if (targetActor->IsDead()) return;
                 
-                // DISMISS LOGIC: If already a teammate, show dismiss menu instead
                 if (targetActor->IsPlayerTeammate()) {
                     ShowDismissMenu(targetActor);
                     return;
                 }
 
-                if (targetActor->IsEssential() || targetActor->IsCommandedActor()) {
+                if (targetActor->IsEssential()) {
                     RE::DebugNotification("This individual cannot be bribed.");
                     return;
+                }
+
+                // HEALTH CHECK FOR HOSTILES via ActorValueOwner
+                if (targetActor->IsHostileToActor(player)) {
+                    auto avOwner = targetActor->AsActorValueOwner();
+                    if (avOwner) {
+                        float currentHP = avOwner->GetActorValue(RE::ActorValue::kHealth);
+                        float maxHP = avOwner->GetPermanentActorValue(RE::ActorValue::kHealth);
+                        float healthPct = (maxHP > 0) ? (currentHP / maxHP) : 1.0f;
+
+                        if (healthPct > 0.30f) {
+                            RE::DebugNotification("Target is too strong to be bribed. Beat them more!");
+                            return;
+                        }
+                    }
                 }
 
                 ShowBribeMenu(targetActor);
@@ -89,7 +103,7 @@ namespace Loyalty {
             auto target = targetHandle.get().get();
             if (!target) return;
 
-            if (a_msg == Message::kUnk0) { // Dismiss
+            if (a_msg == Message::kUnk0) {
                 BehaviorManager::GetSingleton()->DismissAlly(target);
             }
         }
