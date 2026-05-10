@@ -199,9 +199,22 @@ namespace Loyalty {
         a_actor->NotifyAnimationGraph("IdleForceDefaultState");
         a_actor->EvaluatePackage(true, true);
 
-        // Kovduğumuzda tekrardan bize düşman olmasını sağla
+        // Rastgele karar: Ya saldıracak ya da kaçacak
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(1, 100);
+        int roll = dis(gen);
+
         if (player) {
-            StartCombat(a_actor, player);
+            if (roll <= 50) {
+                // Saldır
+                StartCombat(a_actor, player);
+                RE::DebugNotification("He is not happy about being dismissed and attacks!");
+            } else {
+                // Kaç
+                a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
+                RE::DebugNotification("He decided to run for his life!");
+            }
         }
 
         RE::DebugNotification("You have dismissed your ally.");
