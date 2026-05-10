@@ -100,7 +100,7 @@ namespace Loyalty {
                 a_actor->AddToFaction(playerFaction, 0);
             }
 
-            // Remove from common hostile factions so guards/adventurers don't attack them
+            // Remove from common hostile factions so they actually fight their former friends
             auto banditFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0001B0E4);
             if (banditFaction) a_actor->RemoveFromFaction(banditFaction);
 
@@ -135,10 +135,9 @@ namespace Loyalty {
                 }
             }
 
-            // Animasyon Bug'ını Düzelt: Savaştan zorla çıkarıldıkları için animasyonlar bug'a girebiliyor
-            // (Silahı elde tutup saldırmama sorunu). Silahlarını kınlarına sokmaya zorla ve state'i sıfırla.
-            a_actor->DrawWeaponMagicHands(false);
-            a_actor->NotifyAnimationGraph("IdleForceDefaultState");
+            // Animasyon Bug'ını Düzelt: IdleForceDefaultState silahı elde yapıştırıyor.
+            // Sadece WeapUnequip göndererek silahı kınına sokmasını sağlıyoruz.
+            a_actor->NotifyAnimationGraph("WeapUnequip");
 
             if (player) {
                 a_actor->MoveTo(player);
@@ -185,9 +184,25 @@ namespace Loyalty {
         if (followerFaction) {
             a_actor->RemoveFromFaction(followerFaction);
         }
+        auto playerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00000013);
+        if (playerFaction) {
+            a_actor->RemoveFromFaction(playerFaction);
+        }
+
+        // Kovulduğunda tekrardan haydut grubuna katılsın ki diğer haydutlar ona saldırmasın
+        auto banditFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0001B0E4);
+        if (banditFaction) {
+            a_actor->AddToFaction(banditFaction, 0);
+        }
 
         a_actor->NotifyAnimationGraph("IdleForceDefaultState");
         a_actor->EvaluatePackage(true, true);
+
+        // Kovduğumuzda tekrardan bize düşman olmasını sağla
+        auto player = RE::PlayerCharacter::GetSingleton();
+        if (player) {
+            StartCombat(a_actor, player);
+        }
 
         RE::DebugNotification("You have dismissed your ally.");
     }
