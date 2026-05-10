@@ -107,4 +107,29 @@ namespace Loyalty {
     void BehaviorManager::HandleGreedyBehavior(RE::Actor* a_actor) {
         SKSE::log::info("Greedy NPC {} is satisfied for now.", a_actor->GetName());
     }
+
+    void BehaviorManager::CallAllies() {
+        auto player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return;
+
+        auto processLists = RE::ProcessLists::GetSingleton();
+        if (!processLists) return;
+
+        int count = 0;
+        for (auto& handle : processLists->highActorHandles) {
+            auto actor = handle.get();
+            if (actor && actor.get() != player) {
+                auto& runtimeData = actor->GetActorRuntimeData();
+                if (runtimeData.boolBits.any(RE::Actor::BOOL_BITS::kPlayerTeammate)) {
+                    actor->MoveTo(player);
+                    actor->EvaluatePackage(true, true);
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0) {
+            RE::DebugNotification("Allies called to your position.");
+        }
+    }
 }

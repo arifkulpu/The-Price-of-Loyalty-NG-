@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(CommonLibSSE CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
+find_package(DirectXMath CONFIG REQUIRED)
 
 # Use standard library creation instead of macro to avoid generated file issues
 add_library(${PROJECT_NAME} SHARED
@@ -21,7 +22,11 @@ add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE CommonLibSSE::CommonLibSSE Microsoft::DirectXTK)
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    CommonLibSSE::CommonLibSSE 
+    Microsoft::DirectXTK 
+    Microsoft::DirectXMath
+)
 
 target_compile_options(${PROJECT_NAME} PRIVATE /FI"FixLibrary.hpp")
 

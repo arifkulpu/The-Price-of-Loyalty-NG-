@@ -87,7 +87,7 @@ namespace Loyalty {
                 ShowBribeMenu(targetActor);
             } catch (...) {}
         } else {
-            RE::DebugNotification("No NPC found under crosshair.");
+            BehaviorManager::GetSingleton()->CallAllies();
         }
     }
 

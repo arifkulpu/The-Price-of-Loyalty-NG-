@@ -11,14 +11,15 @@ namespace Loyalty {
             return &singleton;
         }
 
-        void ProcessBribeResult(RE::Actor* a_actor, bool a_success);
-        void DismissAlly(RE::Actor* a_actor);
+        static void ProcessBribeResult(RE::Actor* a_actor, bool a_success);
+        static void DismissAlly(RE::Actor* a_actor);
+        static void CallAllies();
         
     private:
         BehaviorManager() = default;
 
-        void HandleTreacherousBehavior(RE::Actor* a_actor);
-        void HandleHonorableBehavior(RE::Actor* a_actor);
-        void HandleGreedyBehavior(RE::Actor* a_actor);
+        static void HandleTreacherousBehavior(RE::Actor* a_actor);
+        static void HandleHonorableBehavior(RE::Actor* a_actor);
+        static void HandleGreedyBehavior(RE::Actor* a_actor);
     };
 }
