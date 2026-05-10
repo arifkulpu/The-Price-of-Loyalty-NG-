@@ -34,9 +34,9 @@ namespace Loyalty {
         if (a_success) {
             EffectManager::GetSingleton()->PlayAcceptanceEffects(a_actor);
             
-            a_actor->NotifyAnimationGraph("IdleForceDefaultState");
             a_actor->StopInteractingQuick(true);
             a_actor->StopCombat();
+            a_actor->DrawWeaponMagicHands(false);
             
             NPCTrait trait = TraitManager::GetSingleton()->GetTrait(a_actor);
             std::random_device rd;
@@ -196,7 +196,7 @@ namespace Loyalty {
             a_actor->AddToFaction(banditFaction, 0);
         }
 
-        a_actor->NotifyAnimationGraph("IdleForceDefaultState");
+        a_actor->DrawWeaponMagicHands(false);
         a_actor->EvaluatePackage(true, true);
 
         // Rastgele karar: Ya saldıracak ya da kaçacak
@@ -212,7 +212,12 @@ namespace Loyalty {
                 RE::DebugNotification("He is not happy about being dismissed and attacks!");
             } else {
                 // Kaç
+                if (avOwner) {
+                    avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f); // Korkaklaştır
+                    avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f); // Korkaklaştır
+                }
                 a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
+                a_actor->EvaluatePackage(true, true);
                 RE::DebugNotification("He decided to run for his life!");
             }
         }
