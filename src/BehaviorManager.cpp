@@ -88,12 +88,39 @@ namespace Loyalty {
             }
 
             a_actor->EvaluatePackage(true, true);
+            
+            // Factions: Add to Follower and Player factions
             auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
             if (followerFaction) {
                 a_actor->AddToFaction(followerFaction, 0);
             }
+            auto playerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00000013);
+            if (playerFaction) {
+                a_actor->AddToFaction(playerFaction, 0);
+            }
 
             auto player = RE::PlayerCharacter::GetSingleton();
+            if (player) {
+                player->StopCombat(); // Oyuncunun hedefini temizle
+            }
+
+            // ÇATIŞMAYI SIFIRLA: 
+            // Daha önce rüşvet verdiğimiz müttefiklerin yeni katılanı düşman olarak görüp saldırmasını engellemek için
+            // çevredeki tüm müttefiklerin (ve yeni NPC'nin) savaş durumunu durduruyoruz.
+            auto processLists = RE::ProcessLists::GetSingleton();
+            if (processLists) {
+                for (auto& handle : processLists->highActorHandles) {
+                    auto actor = handle.get();
+                    if (actor) {
+                        auto& rd = actor->GetActorRuntimeData();
+                        // Eğer bu aktör bir müttefikse VEYA yeni katılan aktörse
+                        if (rd.boolBits.any(RE::Actor::BOOL_BITS::kPlayerTeammate) || actor.get() == a_actor) {
+                            actor->StopCombat();
+                        }
+                    }
+                }
+            }
+
             if (player) {
                 a_actor->MoveTo(player);
             }
@@ -152,9 +179,12 @@ namespace Loyalty {
         // Oyuncuya uyarı: "Bir şeyler yanlış hissettiriyor..."
         RE::DebugNotification("Something feels off about this one...");
 
+        // Thread güvenliği: Ham pointer yerine ActorHandle alıyoruz (CTD önlemi)
+        RE::ActorHandle actorHandle = a_actor->GetHandle();
+
         // Rastgele 5-10 saniyelik gecikme — ayrı thread'de beklenir,
         // ardından güvenli biçimde ana oyun thread'ine ihanet eylemi gönderilir.
-        std::thread([a_actor]() {
+        std::thread([actorHandle]() {
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> dis(5000, 10000); // 5-10 saniye (ms)
@@ -163,33 +193,36 @@ namespace Loyalty {
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
 
             // Oyun thread'ine gönder (thread-safe)
-            SKSE::GetTaskInterface()->AddTask([a_actor]() {
+            SKSE::GetTaskInterface()->AddTask([actorHandle]() {
                 auto player = RE::PlayerCharacter::GetSingleton();
-                if (!player || !a_actor) return;
-
-                // Ölü veya yüklenmemiş aktörleri atla
-                if (a_actor->IsDead()) return;
+                auto actorPtr = actorHandle.get();
+                
+                if (!player || !actorPtr) return;
+                
+                RE::Actor* safeActor = actorPtr.get();
+                if (!safeActor || safeActor->IsDead()) return;
 
                 // Müttefik statüsünü kaldır
-                auto& runtimeData = a_actor->GetActorRuntimeData();
+                auto& runtimeData = safeActor->GetActorRuntimeData();
                 runtimeData.boolBits.reset(RE::Actor::BOOL_BITS::kPlayerTeammate);
 
                 // Düşman ilişki seviyesine ayarla
-                SetRelationshipRank(a_actor, player, -4);
+                SetRelationshipRank(safeActor, player, -4);
 
-                auto avOwner = a_actor->AsActorValueOwner();
+                auto avOwner = safeActor->AsActorValueOwner();
                 if (avOwner) {
                     avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 2.0f); // Çılgın saldırgan
                 }
 
                 // Savaşı başlat
-                StartCombat(a_actor, player);
-                a_actor->EvaluatePackage(true, true);
+                StartCombat(safeActor, player);
+                safeActor->EvaluatePackage(true, true);
 
                 RE::DebugNotification("BETRAYAL! The NPC is attacking you!");
             });
         }).detach(); // Thread'i serbest bırak (join bekleme)
     }
+
 
     void BehaviorManager::HandleHonorableBehavior(RE::Actor* a_actor) {
         SKSE::log::info("Honorable NPC {} is now a staunch ally.", a_actor->GetName());
