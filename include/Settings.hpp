@@ -16,6 +16,8 @@ namespace Loyalty {
             bribeHotkey = GetPrivateProfileIntA("General", "iBribeHotkey", 48, iniPath);
             baseBribeCost = GetPrivateProfileIntA("General", "iBaseBribeCost", 500, iniPath);
             costPerLevel = GetPrivateProfileIntA("General", "iCostPerLevel", 50, iniPath);
+            betrayalMinTime = GetPrivateProfileIntA("General", "iBetrayalMinTime", 60, iniPath);
+            betrayalMaxTime = GetPrivateProfileIntA("General", "iBetrayalMaxTime", 300, iniPath);
 
             char buf[64];
             GetPrivateProfileStringA("General", "fBaseDifficulty", "1.0", buf, sizeof(buf), iniPath);
@@ -28,6 +30,8 @@ namespace Loyalty {
                 WritePrivateProfileStringA("General", "iBribeHotkey", "48", iniPath);
                 WritePrivateProfileStringA("General", "iBaseBribeCost", "500", iniPath);
                 WritePrivateProfileStringA("General", "iCostPerLevel", "50", iniPath);
+                WritePrivateProfileStringA("General", "iBetrayalMinTime", "60", iniPath);
+                WritePrivateProfileStringA("General", "iBetrayalMaxTime", "300", iniPath);
                 WritePrivateProfileStringA("General", "fBaseDifficulty", "1.0", iniPath);
                 WritePrivateProfileStringA("General", "bEnableBackstab", "1", iniPath);
             }
@@ -36,6 +40,8 @@ namespace Loyalty {
         int bribeHotkey = 48;
         int baseBribeCost = 500;
         int costPerLevel = 50;
+        int betrayalMinTime = 60;
+        int betrayalMaxTime = 300;
         float baseDifficulty = 1.0f;
         bool enableBackstab = true;
 

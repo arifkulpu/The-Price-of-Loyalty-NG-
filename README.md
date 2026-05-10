@@ -14,7 +14,7 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
 *   **Personality System:** NPCs are dynamically assigned traits:
     *   **Honorable:** Harder to bribe, requires more gold, but extremely loyal.
     *   **Greedy:** Loves gold, easy to bribe, but might ask for more later.
-    *   **Treacherous:** Cheap to bribe, but **will betray you after 5-10 seconds** — you'll get a warning before the attack.
+    *   **Treacherous:** Cheap to bribe, but **will betray you after a configurable delay (default 1-5 minutes)** — you'll get a warning before the attack.
 *   **Special Classes (Guards):** Guards have specialized pricing and loyalty checks. Bribing a lawman is expensive but grants high-tier combat support.
 *   **Speech Skill Influence:** The higher your Speech skill, the cheaper it is to bribe. At Speech 100, the required gold is reduced by **50%**. Invest in persuasion for maximum gold efficiency.
 *   **Save Game Persistence:** All NPC trait assignments are saved with your game and reloaded correctly, so traits are permanent across sessions.
@@ -37,6 +37,8 @@ The plugin reads settings from `Data/SKSE/Plugins/ThePriceOfLoyalty.ini`. The fi
 | `iBribeHotkey` | Integer | `48` | Virtual key code for the bribe/interaction key. Default is **`B`** (keycode 48). |
 | `iBaseBribeCost` | Integer | `500` | The base gold cost required to bribe an NPC. |
 | `iCostPerLevel` | Integer | `50` | The additional gold cost added per level of the NPC. |
+| `iBetrayalMinTime`| Integer | `60` | Minimum time (in seconds) before a treacherous NPC betrays you. |
+| `iBetrayalMaxTime`| Integer | `300` | Maximum time (in seconds) before a treacherous NPC betrays you. |
 | `fBaseDifficulty` | Float | `1.0` | Global multiplier for bribe costs. `2.0` = twice as expensive, `0.5` = half price. |
 | `bEnableBackstab` | Boolean | `1` | Enables the Treacherous betrayal mechanic. Set to `0` to disable all NPC betrayals. |
 
@@ -46,6 +48,8 @@ The plugin reads settings from `Data/SKSE/Plugins/ThePriceOfLoyalty.ini`. The fi
 iBribeHotkey=48
 iBaseBribeCost=500
 iCostPerLevel=50
+iBetrayalMinTime=60
+iBetrayalMaxTime=300
 fBaseDifficulty=1.0
 bEnableBackstab=1
 ```
@@ -62,7 +66,7 @@ bEnableBackstab=1
 *   **Kişilik Sistemi:** NPC'lere dinamik olarak karakter özellikleri atanır:
     *   **Onurlu (Honorable):** Rüşvet vermesi zordur, daha fazla altın ister ama sonuna kadar sadıktır.
     *   **Açgözlü (Greedy):** Altını sever, kolay rüşvet alır ama ileride daha fazlasını isteyebilir.
-    *   **Hain (Treacherous):** Ucuza rüşvet kabul eder ancak **5-10 saniye sonra sizi satar** — saldırıdan önce bir uyarı mesajı alırsınız.
+    *   **Hain (Treacherous):** Ucuza rüşvet kabul eder ancak **ayarlanabilir bir süre sonra (varsayılan 1-5 dakika) sizi satar** — saldırıdan önce bir uyarı mesajı alırsınız.
 *   **Özel Sınıflar (Muhafızlar):** Şehir muhafızları özel fiyatlandırmaya ve sadakat kontrollerine sahiptir. Bir kanun adamını satın almak pahalıdır ancak güçlü savaş desteği sağlar.
 *   **Konuşma Becerisi (Speech) Etkisi:** Konuşma beceriniz ne kadar yüksekse rüşvet vermek o kadar ucuza mal olur. Speech **100'de** gereken altın miktarı **%50 azalır**. Dil döndürmeyi bilen karakterler her zaman avantajlıdır.
 *   **Kayıt Oyunu Desteği:** Tüm NPC kişilik atamaları kayıt dosyasına yazılır ve doğru şekilde yüklenir; yani her NPC'nin karakteri kalıcıdır.
@@ -85,6 +89,8 @@ Eklenti ayarlarını `Data/SKSE/Plugins/ThePriceOfLoyalty.ini` dosyasından okur
 | `iBribeHotkey` | Tam sayı | `48` | Rüşvet/etkileşim tuşunun sanal tuş kodu. Varsayılan **`B`** tuşudur (kod: 48). |
 | `iBaseBribeCost` | Tam sayı | `500` | Bir NPC'ye rüşvet vermek için gereken taban altın maliyeti. |
 | `iCostPerLevel` | Tam sayı | `50` | NPC'nin her seviyesi için eklenen ekstra altın maliyeti. |
+| `iBetrayalMinTime`| Tam sayı | `60` | Hain NPC'nin size ihanet etmesinden önceki minimum süre (saniye). |
+| `iBetrayalMaxTime`| Tam sayı | `300` | Hain NPC'nin size ihanet etmesinden önceki maksimum süre (saniye). |
 | `fBaseDifficulty` | Ondalık | `1.0` | Rüşvet maliyetleri için global çarpan. `2.0` = iki katı pahalı, `0.5` = yarı fiyat. |
 | `bEnableBackstab` | Boolean | `1` | Hain ihanet mekaniğini etkinleştirir. `0` yaparsanız hiçbir NPC ihanet etmez. |
 
@@ -94,6 +100,8 @@ Eklenti ayarlarını `Data/SKSE/Plugins/ThePriceOfLoyalty.ini` dosyasından okur
 iBribeHotkey=48
 iBaseBribeCost=500
 iCostPerLevel=50
+iBetrayalMinTime=60
+iBetrayalMaxTime=300
 fBaseDifficulty=1.0
 bEnableBackstab=1
 ```

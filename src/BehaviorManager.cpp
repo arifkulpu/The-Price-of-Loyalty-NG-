@@ -2,6 +2,7 @@
 #include "TraitManager.hpp"
 #include "SurrenderHandler.hpp"
 #include "EffectManager.hpp"
+#include "Settings.hpp"
 #include <RE/C/Character.h>
 #include <RE/A/ActorValueOwner.h>
 #include <REL/Relocation.h>
@@ -182,12 +183,17 @@ namespace Loyalty {
         // Thread güvenliği: Ham pointer yerine ActorHandle alıyoruz (CTD önlemi)
         RE::ActorHandle actorHandle = a_actor->GetHandle();
 
-        // Rastgele 5-10 saniyelik gecikme — ayrı thread'de beklenir,
+        // Ayarları al
+        auto settings = Settings::GetSingleton();
+        int minDelay = settings->betrayalMinTime * 1000;
+        int maxDelay = settings->betrayalMaxTime * 1000;
+
+        // Rastgele gecikme — ayrı thread'de beklenir,
         // ardından güvenli biçimde ana oyun thread'ine ihanet eylemi gönderilir.
-        std::thread([actorHandle]() {
+        std::thread([actorHandle, minDelay, maxDelay]() {
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(5000, 10000); // 5-10 saniye (ms)
+            std::uniform_int_distribution<> dis(minDelay, maxDelay);
             int delayMs = dis(gen);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
