@@ -100,6 +100,19 @@ namespace Loyalty {
                 a_actor->AddToFaction(playerFaction, 0);
             }
 
+            // Remove from common hostile factions so guards/adventurers don't attack them
+            auto banditFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0001B0E4);
+            if (banditFaction) a_actor->RemoveFromFaction(banditFaction);
+
+            auto forswornFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00043599);
+            if (forswornFaction) a_actor->RemoveFromFaction(forswornFaction);
+            
+            auto warlockFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0003DF17);
+            if (warlockFaction) a_actor->RemoveFromFaction(warlockFaction);
+            
+            auto vampireFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00027242);
+            if (vampireFaction) a_actor->RemoveFromFaction(vampireFaction);
+
             auto player = RE::PlayerCharacter::GetSingleton();
             if (player) {
                 player->StopCombat(); // Oyuncunun hedefini temizle
