@@ -16,7 +16,7 @@ namespace Loyalty {
             // 1. Stop combat immediately
             a_actor->StopCombat();
             
-            // 2. Set Player Teammate flag (Bitflag method - tested and working)
+            // 2. Set Player Teammate flag
             auto& runtimeData = a_actor->GetActorRuntimeData();
             runtimeData.boolBits.set(RE::Actor::BOOL_BITS::kPlayerTeammate);
 
@@ -57,6 +57,26 @@ namespace Loyalty {
             EffectManager::GetSingleton()->PlayRejectionEffects(a_actor);
             RE::DebugNotification("Bribe rejected!");
         }
+    }
+
+    void BehaviorManager::DismissAlly(RE::Actor* a_actor) {
+        if (!a_actor) return;
+
+        // 1. Reset Teammate flag
+        auto& runtimeData = a_actor->GetActorRuntimeData();
+        runtimeData.boolBits.reset(RE::Actor::BOOL_BITS::kPlayerTeammate);
+
+        // 2. Remove from Follower Faction
+        auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
+        if (followerFaction) {
+            a_actor->RemoveFromFaction(followerFaction);
+        }
+
+        // 3. Force AI Evaluation to return to normal routine
+        a_actor->EvaluatePackage(true, true);
+
+        RE::DebugNotification("You have dismissed your ally.");
+        SKSE::log::info("Dismissed NPC: {}", a_actor->GetName());
     }
 
     void BehaviorManager::HandleTreacherousBehavior(RE::Actor* a_actor) {

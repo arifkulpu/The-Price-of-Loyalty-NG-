@@ -59,7 +59,13 @@ namespace Loyalty {
             try {
                 if (targetActor->IsDead()) return;
                 
-                if (targetActor->IsPlayerTeammate() || targetActor->IsEssential() || targetActor->IsCommandedActor()) {
+                // DISMISS LOGIC: If already a teammate, show dismiss menu instead
+                if (targetActor->IsPlayerTeammate()) {
+                    ShowDismissMenu(targetActor);
+                    return;
+                }
+
+                if (targetActor->IsEssential() || targetActor->IsCommandedActor()) {
                     RE::DebugNotification("This individual cannot be bribed.");
                     return;
                 }
@@ -68,6 +74,46 @@ namespace Loyalty {
             } catch (...) {}
         } else {
             RE::DebugNotification("No NPC found under crosshair.");
+        }
+    }
+
+    class DismissMenuCallback : public RE::IMessageBoxCallback {
+    public:
+        RE::ActorHandle targetHandle;
+
+        DismissMenuCallback(RE::Actor* a_target) {
+            if (a_target) targetHandle = a_target->GetHandle();
+        }
+
+        void Run(Message a_msg) override {
+            auto target = targetHandle.get().get();
+            if (!target) return;
+
+            if (a_msg == Message::kUnk0) { // Dismiss
+                BehaviorManager::GetSingleton()->DismissAlly(target);
+            }
+        }
+    };
+
+    void InteractionHandler::ShowDismissMenu(RE::Actor* a_target) {
+        if (!a_target) return;
+
+        std::string bodyText = "THE PRICE OF LOYALTY\n\n";
+        bodyText += a_target->GetName();
+        bodyText += " is currently following you.\nWhat do you want to do?";
+
+        auto cb = RE::BSTSmartPointer<RE::IMessageBoxCallback>(new DismissMenuCallback(a_target));
+        
+        auto msgBox = new RE::MessageBoxData();
+        if (msgBox) {
+            msgBox->callback = cb;
+            msgBox->bodyText = bodyText.c_str();
+            msgBox->type = 1;
+
+            msgBox->buttonText.push_back("Part Ways (Dismiss)");
+            msgBox->buttonText.push_back("Stay with me");
+
+            msgBox->QueueMessage();
         }
     }
 
@@ -103,7 +149,6 @@ namespace Loyalty {
                 return;
             }
 
-            // ACTUALLY REMOVE GOLD
             if (goldForm) {
                 player->RemoveItem(goldForm, static_cast<int32_t>(choiceAmount), RE::ITEM_REMOVE_REASON::kRemove, nullptr, target);
                 RE::DebugNotification("Gold paid.");

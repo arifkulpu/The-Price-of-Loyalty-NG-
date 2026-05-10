@@ -12,6 +12,7 @@ namespace Loyalty {
         }
 
         void ProcessBribeResult(RE::Actor* a_actor, bool a_success);
+        void DismissAlly(RE::Actor* a_actor);
         
     private:
         BehaviorManager() = default;

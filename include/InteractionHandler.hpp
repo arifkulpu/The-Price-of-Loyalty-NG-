@@ -25,6 +25,7 @@ namespace Loyalty {
         InteractionHandler() = default;
         void HandleInteraction();
         void ShowBribeMenu(RE::Actor* a_target);
+        void ShowDismissMenu(RE::Actor* a_target);
 
     private:
         bool _isActive = false;
