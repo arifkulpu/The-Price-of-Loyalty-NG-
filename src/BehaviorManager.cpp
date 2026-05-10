@@ -2,7 +2,7 @@
 #include "TraitManager.hpp"
 #include "SurrenderHandler.hpp"
 #include "EffectManager.hpp"
-#include <RE/A/Actor.h>
+#include <RE/C/Character.h>
 #include <RE/A/ActorValueOwner.h>
 #include <random>
 
@@ -13,24 +13,32 @@ namespace Loyalty {
         if (a_success) {
             EffectManager::GetSingleton()->PlayAcceptanceEffects(a_actor);
             
-            // --- CORE ALLY LOGIC ---
             // 1. Stop combat immediately
             a_actor->StopCombat();
             
-            // 2. Set Player Teammate flag (This makes them follow and fight for you)
+            // 2. Set Player Teammate flag (Bitflag method - tested and working)
             auto& runtimeData = a_actor->GetActorRuntimeData();
             runtimeData.boolBits.set(RE::Actor::BOOL_BITS::kPlayerTeammate);
 
-            // 3. Set Aggression and Confidence via ActorValueOwner
+            // 3. Set Aggression, Confidence and ASSISTANCE
             auto avOwner = a_actor->AsActorValueOwner();
             if (avOwner) {
                 avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f);
                 avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 4.0f);
+                avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 2.0f); 
             }
 
-            RE::DebugNotification("NPC is now your ally.");
-            // ------------------------
+            // 4. Force AI Evaluation
+            a_actor->EvaluatePackage(true, true);
 
+            // 5. Add to Follower Faction
+            auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
+            if (followerFaction) {
+                a_actor->AddToFaction(followerFaction, 0);
+            }
+
+            RE::DebugNotification("NPC is now your loyal teammate.");
+            
             NPCTrait trait = TraitManager::GetSingleton()->GetTrait(a_actor);
             switch (trait) {
                 case NPCTrait::Treacherous:
