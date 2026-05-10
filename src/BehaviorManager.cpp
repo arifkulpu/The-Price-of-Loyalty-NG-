@@ -171,9 +171,14 @@ namespace Loyalty {
         auto avOwner = a_actor->AsActorValueOwner();
         if (avOwner) {
             avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 1.0f);
-            avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 2.0f); 
+            avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 4.0f); // 4.0 = Korkusuz (Foolhardy)
             avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 0.0f);
             avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
+        }
+
+        auto player = RE::PlayerCharacter::GetSingleton();
+        if (player) {
+            SetRelationshipRank(a_actor, player, -3); // -3 = Düşman
         }
 
         auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
@@ -195,7 +200,6 @@ namespace Loyalty {
         a_actor->EvaluatePackage(true, true);
 
         // Kovduğumuzda tekrardan bize düşman olmasını sağla
-        auto player = RE::PlayerCharacter::GetSingleton();
         if (player) {
             StartCombat(a_actor, player);
         }
