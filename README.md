@@ -26,7 +26,7 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
 
 ### 4. Utility & Quality of Life
 *   **Call Allies (Teleportation):** Pressing the **'B'** key while not targeting an NPC teleports all active bribed allies directly to your position.
-*   **Hard Reset Dismissal:** Dismissing an NPC uses a "Hard Reset" to flush their AI state. They are removed from your factions and will **immediately become hostile to you again** if they were originally an enemy (like a Bandit).
+*   **Hard Reset Dismissal:** Dismissing an NPC uses a "Hard Reset" to flush their AI state. They are removed from your factions and will **randomly either immediately become hostile to you again or flee for their lives** (especially if they were originally an enemy like a Bandit). The gold's influence is gone, and their reaction is unpredictable!
 *   **No "Moaning" Sounds:** Cleaned up actor flags to ensure bribed NPCs don't make reanimation/zombie sounds.
 
 ### 5. INI Configuration
@@ -78,7 +78,7 @@ bEnableBackstab=1
 
 ### 4. Kullanıcı Deneyimi ve Kolaylıklar
 *   **Müttefik Çağırma (Işınlanma):** Bir NPC'ye bakmıyorken **'B'** tuşuna basmak, tüm aktif müttefiklerinizi anında yanınıza ışınlar.
-*   **Kesin Kovma (Hard Reset):** Bir NPC'yi azat ettiğinizde AI verileri sıfırlanır, takımınızdan atılır ve **anında size tekrar düşman olurlar** (eğer aslen bir haydutsalar). Verdiğiniz rüşvetin süresi dolmuş gibi düşünebilirsiniz; kovduğunuz an size saldırmaya başlarlar.
+*   **Kesin Kovma (Hard Reset):** Bir NPC'yi azat ettiğinizde AI verileri sıfırlanır, takımınızdan atılır ve **rastgele bir şekilde ya anında size tekrar düşman olurlar ya da canlarını kurtarmak için kaçarlar** (eğer aslen bir haydutsalar). Verdiğiniz rüşvetin etkisi geçtiği an tepkileri tamamen tahmin edilemez hale gelir.
 *   **Ses Düzeltmesi:** NPC'lerin rüşvetten sonra "zombi" gibi inleme sesleri çıkarması engellenerek normal insan sesleri korunmuştur.
 
 ### 5. INI Ayarları
