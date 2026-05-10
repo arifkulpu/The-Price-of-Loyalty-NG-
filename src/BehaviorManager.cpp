@@ -88,7 +88,7 @@ namespace Loyalty {
                 avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
             }
 
-            a_actor->EvaluatePackage(true, true);
+
             
             // Factions: Add to Follower and Player factions
             auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
@@ -138,6 +138,7 @@ namespace Loyalty {
             // Animasyon Bug'ını Düzelt: Animated Armoury gibi modlar özel animasyonlar kullandığı için
             // standart WeapUnequip bazen yetersiz kalabiliyor. Engine'in kendi fonksiyonunu kullanalım.
             a_actor->DrawWeaponMagicHands(false);
+            a_actor->EvaluatePackage(true, true);
 
             RE::DebugNotification("NPC is now your loyal teammate.");
             
