@@ -51,19 +51,28 @@ namespace Loyalty {
                 auto avOwner = a_actor->AsActorValueOwner();
                 if (avOwner) {
                     avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f);
-                    avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f); // Cowardly
+                    avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f);
                     avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 0.0f);
                 }
-                
-                // Properly initiate flee from player
-                // Parameters: a_fleeRef (player), a_runOnce, a_knows, a_combatMode, a_cell, a_ref (target ref), a_fleeFromDist, a_fleeToDist
+
                 auto player = RE::PlayerCharacter::GetSingleton();
-                a_actor->InitiateFlee(player, true, true, true, nullptr, nullptr, 0.0f, 2000.0f);
-                
+
+                // Önce her iki tarafın da savaş durumunu temizle
+                // (aksi hâlde savaş müziği çalmaya devam eder)
+                a_actor->StopCombat();
+                if (player) {
+                    player->StopCombat();
+                }
+
+                // a_combatMode = false: NPC kaçış sırasında savaş modunda olmayacak
+                // Bu sayede oyun motoru combat state'i temizler ve müzik durur
+                a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
+
                 a_actor->EvaluatePackage(true, true);
                 RE::DebugNotification("He took the gold and ran away!");
                 return; // Do not become a teammate
             }
+
 
             // Normal Teammate Setup
             auto& runtimeData = a_actor->GetActorRuntimeData();
