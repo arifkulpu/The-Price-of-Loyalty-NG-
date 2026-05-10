@@ -13,16 +13,17 @@ namespace Loyalty {
         if (a_success) {
             EffectManager::GetSingleton()->PlayAcceptanceEffects(a_actor);
             
-            // 1. Force stop all current actions (Sitting, leaning, etc.)
+            // 1. Reset state and stop moaning (Removed kIsCommandedActor)
+            a_actor->NotifyAnimationGraph("IdleForceDefaultState");
             a_actor->StopInteractingQuick(true);
             a_actor->StopCombat();
             
-            // 2. Set Loyalty Flags
+            // 2. Set Player Teammate flag (This is enough for ally status)
             auto& runtimeData = a_actor->GetActorRuntimeData();
             runtimeData.boolBits.set(RE::Actor::BOOL_BITS::kPlayerTeammate);
-            runtimeData.boolFlags.set(RE::Actor::BOOL_FLAGS::kIsCommandedActor);
+            runtimeData.boolFlags.reset(RE::Actor::BOOL_FLAGS::kIsCommandedActor); // ENSURE NO MOANING
 
-            // 3. Set AI Values to favor following
+            // 3. Set AI Values
             auto avOwner = a_actor->AsActorValueOwner();
             if (avOwner) {
                 avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f);
@@ -31,13 +32,19 @@ namespace Loyalty {
                 avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
             }
 
-            // 4. Force Package Refresh
+            // 4. Force AI Evaluation
             a_actor->EvaluatePackage(true, true);
 
             // 5. Add to Follower Faction
             auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
             if (followerFaction) {
                 a_actor->AddToFaction(followerFaction, 0);
+            }
+
+            // 6. Instant Teleport to Player (To ensure they start following immediately)
+            auto player = RE::PlayerCharacter::GetSingleton();
+            if (player) {
+                a_actor->MoveTo(player);
             }
 
             RE::DebugNotification("NPC is now your loyal teammate.");
@@ -65,24 +72,24 @@ namespace Loyalty {
     void BehaviorManager::DismissAlly(RE::Actor* a_actor) {
         if (!a_actor) return;
 
-        // 1. Reset all flags
         auto& runtimeData = a_actor->GetActorRuntimeData();
         runtimeData.boolBits.reset(RE::Actor::BOOL_BITS::kPlayerTeammate);
         runtimeData.boolFlags.reset(RE::Actor::BOOL_FLAGS::kIsCommandedActor);
 
-        // 2. Reset Aggression to neutral (1.0) so they stop following but stay peaceful
         auto avOwner = a_actor->AsActorValueOwner();
         if (avOwner) {
             avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 1.0f);
+            avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 2.0f); 
+            avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 0.0f);
+            avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
         }
 
-        // 3. Remove from Follower Faction
         auto followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
         if (followerFaction) {
             a_actor->RemoveFromFaction(followerFaction);
         }
 
-        // 4. Force AI Evaluation to return home
+        a_actor->NotifyAnimationGraph("IdleForceDefaultState");
         a_actor->EvaluatePackage(true, true);
 
         RE::DebugNotification("You have dismissed your ally.");
