@@ -58,13 +58,23 @@ namespace Loyalty {
 
     bool TraitManager::RollForSuccess(RE::Actor* a_actor, float a_goldOffered) {
         float required = CalculateBribeCost(a_actor);
-        
-        // Simple success check: gold offered vs required
-        // In a full version, this would include Speech skill influence
-        if (a_goldOffered >= required) {
-            return true;
+
+        // C: Oyuncu Speech becerisini hesaba kat
+        // Speech 0 → indirim yok | Speech 100 → maliyet %50 azalır
+        auto player = RE::PlayerCharacter::GetSingleton();
+        if (player) {
+            auto avOwner = player->AsActorValueOwner();
+            if (avOwner) {
+                float speech = avOwner->GetActorValue(RE::ActorValue::kSpeech);
+                speech = std::clamp(speech, 0.0f, 100.0f);
+                // 0-100 arası speech → 1.0x - 0.5x indirim faktörü
+                float discountFactor = 1.0f - (speech / 100.0f) * 0.5f;
+                required *= discountFactor;
+                SKSE::log::debug("Speech={:.0f}, discount={:.2f}x, effective_cost={:.0f}g", 
+                                 speech, discountFactor, required);
+            }
         }
 
-        return false;
+        return (a_goldOffered >= required);
     }
 }

@@ -3,6 +3,7 @@
 #include "Settings.hpp"
 #include "TraitManager.hpp"
 #include "BehaviorManager.hpp"
+#include "SerializationManager.hpp"
 
 namespace Loyalty {
     void Initialize() {
@@ -46,6 +47,9 @@ extern "C" [[maybe_unused]] __declspec(dllexport) bool SKSEPlugin_Query(SKSE::Qu
 extern "C" [[maybe_unused]] __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
     SKSE::Init(a_skse);
+
+    // Serialization: NPC trait verilerini kayıt dosyasına yaz/oku
+    Loyalty::SerializationManager::Register();
     
     auto messaging = SKSE::GetMessagingInterface();
 	messaging->RegisterListener(MessageHandler);
