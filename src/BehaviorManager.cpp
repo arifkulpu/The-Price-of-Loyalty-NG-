@@ -82,9 +82,9 @@ namespace Loyalty {
 
             auto avOwner = a_actor->AsActorValueOwner();
             if (avOwner) {
-                avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f);
-                avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 4.0f);
-                avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 2.0f);
+                avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 1.0f); // Aggressive (saldırgan)
+                avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 4.0f); // Foolhardy (korkusuz)
+                avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 2.0f); // Helps friends and allies
                 avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
             }
 
