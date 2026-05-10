@@ -1,0 +1,12 @@
+build/
+out/
+.vs/
+vcpkg_installed/
+*.user
+*.suo
+*.pdb
+bin/
+obj/
+CMakeSettings.json
+CMakeUserPresets.json
+.gemini/

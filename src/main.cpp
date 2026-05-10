@@ -1,0 +1,54 @@
+#include <SKSE/SKSE.h>
+#include "InteractionHandler.hpp"
+#include "Settings.hpp"
+#include "TraitManager.hpp"
+#include "BehaviorManager.hpp"
+
+namespace Loyalty {
+    void Initialize() {
+        Settings::GetSingleton()->Load();
+        
+        auto input = RE::BSInputDeviceManager::GetSingleton();
+        if (input) {
+            input->AddEventSink(InteractionHandler::GetSingleton());
+        }
+
+        SKSE::log::info("The Price of Loyalty: Aggressive Debug Mode Initialized.");
+        
+        // High visibility startup check
+        RE::DebugMessageBox("The Price of Loyalty System Online\nPress 'B' to interact with NPCs.");
+    }
+}
+
+void MessageHandler(SKSE::MessagingInterface::Message* a_msg)
+{
+	if (a_msg->type == SKSE::MessagingInterface::kDataLoaded) {
+		Loyalty::Initialize();
+	}
+}
+
+extern "C" [[maybe_unused]] __declspec(dllexport) const ::SKSE::PluginDeclaration SKSEPlugin_Version({
+    .Version = REL::Version{ 1, 0, 0, 0 },
+    .Name = "ThePriceOfLoyalty",
+    .Author = "Antigravity",
+    .StructCompatibility = SKSE::StructCompatibility::Independent,
+    .RuntimeCompatibility = SKSE::PluginDeclaration::RuntimeCompatibility(SKSE::VersionIndependence::AddressLibrary)
+});
+
+extern "C" [[maybe_unused]] __declspec(dllexport) bool SKSEPlugin_Query(SKSE::QueryInterface*, SKSE::PluginInfo* pluginInfo)
+{
+    pluginInfo->infoVersion = SKSE::PluginInfo::kVersion;
+    pluginInfo->name = SKSEPlugin_Version.GetName().data();
+    pluginInfo->version = static_cast<std::uint32_t>(SKSEPlugin_Version.GetVersion().pack());
+    return true;
+}
+
+extern "C" [[maybe_unused]] __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
+{
+    SKSE::Init(a_skse);
+    
+    auto messaging = SKSE::GetMessagingInterface();
+	messaging->RegisterListener(MessageHandler);
+
+	return true;
+}
