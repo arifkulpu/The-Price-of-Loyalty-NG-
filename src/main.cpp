@@ -14,10 +14,7 @@ namespace Loyalty {
             input->AddEventSink(InteractionHandler::GetSingleton());
         }
 
-        SKSE::log::info("The Price of Loyalty: Aggressive Debug Mode Initialized.");
-        
-        // High visibility startup check
-        RE::DebugMessageBox("The Price of Loyalty System Online\nPress 'B' to interact with NPCs.");
+        SKSE::log::info("The Price of Loyalty Initialized.");
     }
 }
 
