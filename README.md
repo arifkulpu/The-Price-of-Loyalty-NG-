@@ -1,31 +1,38 @@
 # The Price of Loyalty (NG)
 
-A mod for Skyrim Anniversary Edition (v1.6.1170) that allows you to bribe NPCs and test their loyalty. This version is optimized using **Skyrim Native UI** to ensure 100% stability even in heavy mod lists (3000+ plugins).
+A mod for Skyrim Anniversary Edition (v1.6.1170) that allows you to bribe NPCs and test their loyalty. Optimized for 100% stability.
 
-### 🚀 Features / Özellikler
+## English Documentation
 
-*   **Dynamic Bribing (Dinamik Rüşvet):** Interact and bribe almost any NPC in the game.
-*   **Surrender Mechanic (Teslim Olma):** Hostile NPCs (Bandits, etc.) will only accept bribes when their health is below 30%. They must be "beaten" into submission first!
-*   **Call Allies (Müttefik Çağırma):** Press the **'B'** key while looking at empty space to teleport all your bribed allies to your position. Great for when they get stuck.
-*   **Hard Reset Dismissal (Gelişmiş Kovma):** Dismissed NPCs undergo a "Hard Reset" to ensure they stop following and return to their original routines immediately.
-*   **Native UI:** Uses Skyrim's built-in message boxes to prevent ImGui crashes or conflicts.
-*   **Loyalty Mechanics:** Bribed NPCs may remain loyal or decide to betray you after taking your gold.
+### 🚀 Features
+*   **Dynamic Bribing:** Interact and bribe almost any NPC in the game.
+*   **Surrender Mechanic:** Hostile NPCs (Bandits, etc.) only accept bribes when their health is below 30%.
+*   **Call Allies:** Press the **'B'** key while looking at empty space to teleport all allies to your position.
+*   **Hard Reset Dismissal:** Dismissed NPCs undergo a "Hard Reset" to return to their original routines immediately.
+*   **Enhanced Follow Logic:** Bribed NPCs stand up and follow you instantly. No more "moaning" sounds!
+*   **Native UI:** Uses Skyrim's built-in message boxes for maximum compatibility.
 
-### 👥 Covered NPCs / Kapsanan NPC'ler
+### 🎮 Usage
+*   **Bribe/Dismiss:** Face an NPC and press **'B'**.
+*   **Call Allies:** Press **'B'** while looking at the ground/empty space.
+*   **Combat:** Beat hostiles until their health is low (<30%) to bribe them.
 
-*   **Supported:** Citizens, Guards, Bandits, and other standard NPCs.
-*   **Exceptions:** Followers, Essential (Invulnerable) NPCs, and dead bodies are excluded from bribery.
+---
 
-### 🛠 Installation / Kurulum
+## Türkçe Dokümantasyon
 
-1.  Place `ThePriceOfLoyalty.dll` in your `Data/SKSE/Plugins` folder.
-2.  Launch the game.
+### 🚀 Özellikler
+*   **Dinamik Rüşvet:** Oyundaki neredeyse tüm NPC'lerle etkileşime geçin ve onları altınla safınıza çekin.
+*   **Teslim Olma Mekaniği:** Haydutlar ve düşmanlar canları %30'un altına düşmeden rüşvet kabul etmezler. Önce onları dize getirmeniz gerekir!
+*   **Müttefik Çağırma:** Boşluğa bakarken **'B'** tuşuna bastığınızda, tüm müttefikleriniz anında yanınıza ışınlanır. Takılan NPC'ler için kesin çözüm.
+*   **Gelişmiş Kovma:** Azat edilen NPC'ler "Sert Sıfırlama" işleminden geçer, böylece peşinizi kesin olarak bırakıp eski rutinlerine dönerler.
+*   **Gelişmiş Takip Mantığı:** Rüşvet verdiğiniz NPC'ler artık zombi gibi inlemez ve oldukları yerde çakılı kalmak yerine anında peşinize takılırlar.
+*   **Yerel Arayüz (Native UI):** Skyrim'in kendi mesaj kutularını kullanır, çökme yapmaz ve 3000+ modlu listelerde bile stabildir.
 
-### 🎮 Usage / Kullanım
-
-*   **Bribe/Dismiss:** Face an NPC and press the **'B'** key.
-*   **Call Allies:** Press the **'B'** key while looking at the ground or empty space to teleport your followers to you.
-*   **Hostiles:** You cannot bribe healthy hostiles. Lower their health below 30% first.
+### 🎮 Kullanım
+*   **Rüşvet/Kovma:** Bir NPC'ye bakarken **'B'** tuşuna basın.
+*   **Müttefikleri Çağır:** Yere veya boşluğa bakarken **'B'** tuşuna basın, tüm takipçileriniz yanınıza ışınlansın.
+*   **Düşmanlar:** Canı dolu olan düşmanlara rüşvet veremezsiniz. Önce canlarını %30'un altına indirin.
 
 ---
 
