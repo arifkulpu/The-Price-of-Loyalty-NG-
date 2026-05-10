@@ -35,6 +35,8 @@ The plugin reads settings from `Data/SKSE/Plugins/ThePriceOfLoyalty.ini`. The fi
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `iBribeHotkey` | Integer | `48` | Virtual key code for the bribe/interaction key. Default is **`B`** (keycode 48). |
+| `iBaseBribeCost` | Integer | `500` | The base gold cost required to bribe an NPC. |
+| `iCostPerLevel` | Integer | `50` | The additional gold cost added per level of the NPC. |
 | `fBaseDifficulty` | Float | `1.0` | Global multiplier for bribe costs. `2.0` = twice as expensive, `0.5` = half price. |
 | `bEnableBackstab` | Boolean | `1` | Enables the Treacherous betrayal mechanic. Set to `0` to disable all NPC betrayals. |
 
@@ -42,6 +44,8 @@ The plugin reads settings from `Data/SKSE/Plugins/ThePriceOfLoyalty.ini`. The fi
 ```ini
 [General]
 iBribeHotkey=48
+iBaseBribeCost=500
+iCostPerLevel=50
 fBaseDifficulty=1.0
 bEnableBackstab=1
 ```
@@ -79,6 +83,8 @@ Eklenti ayarlarını `Data/SKSE/Plugins/ThePriceOfLoyalty.ini` dosyasından okur
 | Ayar | Tür | Varsayılan | Açıklama |
 |------|-----|-----------|----------|
 | `iBribeHotkey` | Tam sayı | `48` | Rüşvet/etkileşim tuşunun sanal tuş kodu. Varsayılan **`B`** tuşudur (kod: 48). |
+| `iBaseBribeCost` | Tam sayı | `500` | Bir NPC'ye rüşvet vermek için gereken taban altın maliyeti. |
+| `iCostPerLevel` | Tam sayı | `50` | NPC'nin her seviyesi için eklenen ekstra altın maliyeti. |
 | `fBaseDifficulty` | Ondalık | `1.0` | Rüşvet maliyetleri için global çarpan. `2.0` = iki katı pahalı, `0.5` = yarı fiyat. |
 | `bEnableBackstab` | Boolean | `1` | Hain ihanet mekaniğini etkinleştirir. `0` yaparsanız hiçbir NPC ihanet etmez. |
 
@@ -86,6 +92,8 @@ Eklenti ayarlarını `Data/SKSE/Plugins/ThePriceOfLoyalty.ini` dosyasından okur
 ```ini
 [General]
 iBribeHotkey=48
+iBaseBribeCost=500
+iCostPerLevel=50
 fBaseDifficulty=1.0
 bEnableBackstab=1
 ```

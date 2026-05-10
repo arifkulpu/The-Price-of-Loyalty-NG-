@@ -1,4 +1,5 @@
 #include "TraitManager.hpp"
+#include "Settings.hpp"
 #include <random>
 
 namespace Loyalty {
@@ -32,10 +33,12 @@ namespace Loyalty {
     float TraitManager::CalculateBribeCost(RE::Actor* a_actor) {
         if (!a_actor) return 0.0f;
 
-        float baseCost = 100.0f;
+        auto settings = Settings::GetSingleton();
+
+        float baseCost = static_cast<float>(settings->baseBribeCost);
         
         // Scale by level
-        baseCost += a_actor->GetLevel() * 10.0f;
+        baseCost += a_actor->GetLevel() * static_cast<float>(settings->costPerLevel);
 
         // Scale by Social Status (simplified check)
         if (a_actor->IsGuard()) {
@@ -52,6 +55,8 @@ namespace Loyalty {
             case NPCTrait::Treacherous: baseCost *= 0.9f; break;
             default: break;
         }
+        // Apply Global Difficulty Multiplier
+        baseCost *= settings->baseDifficulty;
 
         return baseCost;
     }
