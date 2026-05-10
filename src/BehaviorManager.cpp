@@ -135,6 +135,11 @@ namespace Loyalty {
                 }
             }
 
+            // Animasyon Bug'ını Düzelt: Savaştan zorla çıkarıldıkları için animasyonlar bug'a girebiliyor
+            // (Silahı elde tutup saldırmama sorunu). Silahlarını kınlarına sokmaya zorla ve state'i sıfırla.
+            a_actor->DrawWeaponMagicHands(false);
+            a_actor->NotifyAnimationGraph("IdleForceDefaultState");
+
             if (player) {
                 a_actor->MoveTo(player);
             }
