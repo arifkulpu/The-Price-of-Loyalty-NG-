@@ -64,22 +64,37 @@ namespace Loyalty {
     bool TraitManager::RollForSuccess(RE::Actor* a_actor, float a_goldOffered) {
         float required = CalculateBribeCost(a_actor);
 
-        // C: Oyuncu Speech becerisini hesaba kat
-        // Speech 0 → indirim yok | Speech 100 → maliyet %50 azalır
+        // Speech skill influence (0-100 -> 1.0x - 0.5x discount)
         auto player = RE::PlayerCharacter::GetSingleton();
         if (player) {
             auto avOwner = player->AsActorValueOwner();
             if (avOwner) {
                 float speech = avOwner->GetActorValue(RE::ActorValue::kSpeech);
                 speech = std::clamp(speech, 0.0f, 100.0f);
-                // 0-100 arası speech → 1.0x - 0.5x indirim faktörü
                 float discountFactor = 1.0f - (speech / 100.0f) * 0.5f;
                 required *= discountFactor;
-                SKSE::log::debug("Speech={:.0f}, discount={:.2f}x, effective_cost={:.0f}g", 
-                                 speech, discountFactor, required);
             }
         }
 
-        return (a_goldOffered >= required);
+        // Probability based success
+        // Base chance is 75% if offered == required.
+        // Formula: (offered / required) * 75.0
+        float ratio = a_goldOffered / required;
+        float chance = ratio * 75.0f;
+
+        // Cap the maximum chance at 95% to ensure it's never 100% guaranteed
+        if (chance > 95.0f) chance = 95.0f;
+
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> dis(0.0f, 100.0f);
+
+        float roll = dis(gen);
+        bool success = (roll <= chance);
+
+        SKSE::log::debug("Bribe Roll: Offered=%.0f, Required=%.0f, Ratio=%.2f, Chance=%.1f%%, Roll=%.1f, Success=%s",
+                         a_goldOffered, required, ratio, chance, roll, success ? "YES" : "NO");
+
+        return success;
     }
 }

@@ -17,6 +17,9 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
     *   **Treacherous:** Cheap to bribe, but **will betray you after a configurable delay (default 1-5 minutes)** — you'll get a warning before the attack.
 *   **Special Classes (Guards):** Guards have specialized pricing and loyalty checks. Bribing a lawman is expensive but grants high-tier combat support.
 *   **Speech Skill Influence:** The higher your Speech skill, the cheaper it is to bribe. At Speech 100, the required gold is reduced by **50%**. Invest in persuasion for maximum gold efficiency.
+*   **Bribe Success Probability:** Success is not guaranteed. The chance depends on your offer:
+    *   **Base Chance:** Offering the exact required amount grants a **75%** success rate.
+    *   **Risk Factor:** Success is capped at **95%**. There is always a small chance of refusal, even with high bribes!
 *   **Save Game Persistence:** All NPC trait assignments are saved with your game and reloaded correctly, so traits are permanent across sessions.
 
 ### 3. Combat & Recruitment Mechanics
@@ -69,6 +72,9 @@ bEnableBackstab=1
     *   **Hain (Treacherous):** Ucuza rüşvet kabul eder ancak **ayarlanabilir bir süre sonra (varsayılan 1-5 dakika) sizi satar** — saldırıdan önce bir uyarı mesajı alırsınız.
 *   **Özel Sınıflar (Muhafızlar):** Şehir muhafızları özel fiyatlandırmaya ve sadakat kontrollerine sahiptir. Bir kanun adamını satın almak pahalıdır ancak güçlü savaş desteği sağlar.
 *   **Konuşma Becerisi (Speech) Etkisi:** Konuşma beceriniz ne kadar yüksekse rüşvet vermek o kadar ucuza mal olur. Speech **100'de** gereken altın miktarı **%50 azalır**. Dil döndürmeyi bilen karakterler her zaman avantajlıdır.
+*   **Rüşvet Başarı Olasılığı:** Rüşvet vermek artık garanti değildir. Başarı şansı teklifinize bağlıdır:
+    *   **Temel Şans:** İstenen miktarı tam ödemek **%75** başarı şansı verir.
+    *   **Risk Faktörü:** Başarı şansı **%95** ile sınırlıdır. En yüksek rüşveti verseniz bile her zaman küçük bir reddedilme riski vardır!
 *   **Kayıt Oyunu Desteği:** Tüm NPC kişilik atamaları kayıt dosyasına yazılır ve doğru şekilde yüklenir; yani her NPC'nin karakteri kalıcıdır.
 
 ### 3. Savaş ve Safa Katma Mekanikleri
