@@ -28,7 +28,27 @@ namespace Loyalty {
             func(a_actor, a_target, false);
         }
     }
-    void BehaviorManager::ProcessBribeResult(RE::Actor* a_actor, bool a_success) {
+
+    bool IsBanditLike(RE::Actor* a_actor) {
+        if (!a_actor) return false;
+
+        static const RE::FormID banditFactions[] = {
+            0x0001B0E4, // Bandit
+            0x00043599, // Forsworn
+            0x0003DF17, // Warlock
+            0x00027242  // Vampire
+        };
+
+        for (auto id : banditFactions) {
+            auto faction = RE::TESForm::LookupByID<RE::TESFaction>(id);
+            if (faction && a_actor->IsInFaction(faction)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void BehaviorManager::ProcessBribeResult(RE::Actor* a_actor, bool a_success, bool a_isLowOffer) {
         if (!a_actor) return;
 
         if (a_success) {
@@ -43,6 +63,19 @@ namespace Loyalty {
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> dis(1, 100);
             int roll = dis(gen);
+
+            // DYNAMIC BETRAYAL FOR BANDITS:
+            // Low bribe -> 60% chance to become treacherous
+            // High bribe -> 15% chance to become treacherous
+            if (IsBanditLike(a_actor)) {
+                int betrayalChance = a_isLowOffer ? 60 : 15;
+                if (roll <= betrayalChance) {
+                    TraitManager::GetSingleton()->SetTrait(a_actor, NPCTrait::Treacherous);
+                    trait = NPCTrait::Treacherous; // Update local variable for the switch below
+                    SKSE::log::info("Bandit-like NPC {} decided to betray because of {} bribe (Chance: {}%).", 
+                                     a_actor->GetName(), a_isLowOffer ? "LOW" : "HIGH", betrayalChance);
+                }
+            }
 
             // SPECIAL CASE: Runaway (Parayı alıp kaçanlar)
             // Chance: Greedy (40%), Others (10%)

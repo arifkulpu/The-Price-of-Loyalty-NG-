@@ -169,7 +169,8 @@ namespace Loyalty {
             }
 
             bool success = TraitManager::GetSingleton()->RollForSuccess(target, choiceAmount);
-            BehaviorManager::GetSingleton()->ProcessBribeResult(target, success);
+            bool isLow = (a_msg == Message::kUnk0);
+            BehaviorManager::GetSingleton()->ProcessBribeResult(target, success, isLow);
         }
     };
 
