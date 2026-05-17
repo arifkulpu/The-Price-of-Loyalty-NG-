@@ -58,6 +58,27 @@ namespace Loyalty {
     bool IsMerchantOrServiceNPC(RE::Actor* a_actor) {
         if (!a_actor) return false;
 
+        // 1. Check engine-level Vendor Keyword (0x00096637 = ActorTypeVendor)
+        auto vendorKeyword = RE::TESForm::LookupByID<RE::BGSKeyword>(0x00096637);
+        if (vendorKeyword && a_actor->HasKeyword(vendorKeyword)) {
+            return true;
+        }
+
+        auto base = a_actor->GetActorBase();
+        if (base) {
+            if (vendorKeyword && base->HasKeyword(vendorKeyword)) {
+                return true;
+            }
+
+            // Check template form for keyword
+            if (base->baseTemplateForm) {
+                auto tempNPC = base->baseTemplateForm->As<RE::TESNPC>();
+                if (tempNPC && vendorKeyword && tempNPC->HasKeyword(vendorKeyword)) {
+                    return true;
+                }
+            }
+        }
+
         static const RE::FormID merchantFactions[] = {
             0x00051596, // JobMerchantFaction
             0x00051599, // JobBlacksmithFaction
@@ -72,7 +93,7 @@ namespace Loyalty {
             0x00085A6A  // ServicesTrainer
         };
 
-        // 1. Check actor's active factions
+        // 2. Check actor's active factions
         for (auto fID : merchantFactions) {
             auto faction = RE::TESForm::LookupByID<RE::TESFaction>(fID);
             if (faction && a_actor->IsInFaction(faction)) {
@@ -80,18 +101,7 @@ namespace Loyalty {
             }
         }
 
-        // 2. Check engine-level Vendor / Blacksmith Keywords (extremely robust for vanilla & modded NPCs)
-        if (a_actor->HasKeywordString("ActorTypeVendor") || a_actor->HasKeywordString("ActorTypeBlacksmith")) {
-            return true;
-        }
-
-        auto base = a_actor->GetActorBase();
         if (base) {
-            // Check base form's direct keywords
-            if (base->HasKeywordString("ActorTypeVendor") || base->HasKeywordString("ActorTypeBlacksmith")) {
-                return true;
-            }
-
             // 3. Check base form's faction list (handles silent/inactive/rank -1 factions)
             for (const auto& fData : base->factions) {
                 if (fData.faction) {
@@ -103,13 +113,10 @@ namespace Loyalty {
                 }
             }
 
-            // 4. Check Template Factions and Keywords (for templated merchants/innkeepers)
+            // 4. Check Template Factions (for templated merchants/innkeepers)
             if (base->baseTemplateForm) {
                 auto tempNPC = base->baseTemplateForm->As<RE::TESNPC>();
                 if (tempNPC) {
-                    if (tempNPC->HasKeywordString("ActorTypeVendor") || tempNPC->HasKeywordString("ActorTypeBlacksmith")) {
-                        return true;
-                    }
                     for (const auto& fData : tempNPC->factions) {
                         if (fData.faction) {
                             for (auto fID : merchantFactions) {
@@ -433,9 +440,9 @@ namespace Loyalty {
                         selectedClass = pair.second;
                     }
 
-                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(selectedBaseID);
+                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESBoundObject>(selectedBaseID);
                     if (!mercenaryBase) {
-                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x000A1A2E); // Fallback to Sword & Shield
+                        mercenaryBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x000A1A2E); // Fallback to Sword & Shield
                         selectedClass = MercenaryClass::kMelee;
                     }
 
