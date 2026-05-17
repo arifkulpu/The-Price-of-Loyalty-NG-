@@ -55,6 +55,63 @@ namespace Loyalty {
         }
     }
 
+    bool IsMerchantOrServiceNPC(RE::Actor* a_actor) {
+        if (!a_actor) return false;
+
+        static const RE::FormID merchantFactions[] = {
+            0x00051596, // JobMerchantFaction
+            0x00051599, // JobBlacksmithFaction
+            0x0005C013, // JobInnkeeperFaction
+            0x0009D1B9, // JobSellsSpellsFaction
+            0x00051598, // JobApothecaryFaction
+            0x00050689, // ServicesApothecary
+            0x0005068F, // ServicesBlacksmith
+            0x00050688, // ServicesInnkeeper
+            0x0005068C, // ServicesMerchant
+            0x0005068B, // ServicesSpellTrader
+            0x00085A6A  // ServicesTrainer
+        };
+
+        // 1. Check actor's active factions
+        for (auto fID : merchantFactions) {
+            auto faction = RE::TESForm::LookupByID<RE::TESFaction>(fID);
+            if (faction && a_actor->IsInFaction(faction)) {
+                return true;
+            }
+        }
+
+        // 2. Check base form's faction list (handles silent/inactive/rank -1 factions)
+        auto base = a_actor->GetActorBase();
+        if (base) {
+            for (const auto& fData : base->factions) {
+                if (fData.faction) {
+                    for (auto fID : merchantFactions) {
+                        if (fData.faction->GetFormID() == fID) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Fail-safe text check on display name
+        if (a_actor->GetName()) {
+            std::string name = a_actor->GetName();
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            static const std::vector<std::string> merchantKeywords = {
+                "merchant", "innkeeper", "vendor", "shopkeeper", "trader", 
+                "bartender", "apothecary", "blacksmith", "inn keeper", "shop keeper"
+            };
+            for (const auto& kw : merchantKeywords) {
+                if (name.find(kw) != std::string::npos) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool IsBanditLike(RE::Actor* a_actor) {
         if (!a_actor) return false;
 
@@ -277,10 +334,9 @@ namespace Loyalty {
                 bool isUnique = base && base->IsUnique();
                 bool isEssential = base && base->IsEssential();
                 
-                auto merchantFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00051596);
-                bool isMerchant = merchantFaction && a_actor->IsInFaction(merchantFaction);
+                bool isMerchant = IsMerchantOrServiceNPC(a_actor);
 
-                if (isEssential || (isUnique && isMerchant)) {
+                if (isEssential || isMerchant) {
                     // ==========================================================
                     // YÖNTEM 2: Benim Yerime Adamımı Al (Esnaf ve Quest NPC'leri)
                     // ==========================================================
