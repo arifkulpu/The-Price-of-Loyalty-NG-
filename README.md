@@ -35,7 +35,19 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
 *   **AI Package Flushing & TDM Compatibility:** Immediately after the bribe, an engine-level `EvaluatePackage(true, true)` and `StopCombat()` is run on all surrounding allies. This flushes their AI combat target list in milliseconds, immediately stopping followers from targeting each other and making them fully compatible with mods like `True Directional Movement (TDM)` and `SmartTargetingNPC`.
 *   **Animation Sync:** NPCs will immediately stop sandbox activities (sitting, leaning) upon being bribed to follow you.
 
-### 4. Advanced Engine Fixes & Quality of Life
+### 4. Immersive Combat Classes & Gender-Aware Names
+*   **Diverse Combat Classes (Method 2 Spawns):** When bribing unique/quest/merchant NPCs who must remain at their posts, the spawned substitute bodyguard is no longer a generic warrior. They will dynamically and randomly spawn as one of four distinct scaled combat archetypes:
+    *   **Melee Guardian:** Heavy armor protector wielding a one-handed sword and a shield (Tank).
+    *   **Two-Handed Berserker:** Heavy armor warrior wielding a massive battleaxe or greatsword (DPS).
+    *   **Agile Archer:** Swift light-armor marksman wielding bows and daggers (Ranger).
+    *   **Destruction Battlemage:** Resilient spellcaster hurling fireballs, ice storms, and lightning bolts (Mage).
+*   **Gender-Aware Dynamic Naming (1,440+ Combinations):** Spawning allies or bribing generic hostiles automatically triggers a background gender detection routine (`GetSex()`). The NPC is assigned a lore-friendly first name (e.g., Bjorn, Ragnar, Lucan for males; Freya, Serana, Lydia for females) and a class-tailored roleplay title (e.g., *"the Spell-Weaver"* for mages, *"Bone-Breaker"* for two-handed warriors, *"Shield-Wall"* for tanks, *"Swift-Arrow"* for archers).
+*   **Legendary Easter Egg Names (3% Chance):** There is a rare 3% chance that any newly recruited mercenary or generic NPC will spawn as a legendary mythical figure:
+    *   **Male Recruits:** Named **"King Arif"** directly.
+    *   **Female Recruits:** Named **"Queen Arif"** directly.
+*   **Personalized Dismissal Notifications:** When parting ways with your allies, notifications and message boxes print their actual custom display names (e.g., *"Camilla Swift-Arrow has been dismissed."* or *"Bjorn Shield-Wall is not happy about being dismissed and attacks!"*). You'll always know exactly who you are dismissing.
+
+### 5. Advanced Engine Fixes & Quality of Life
 *   **Engine-Level Kalıcılık (kPersistent Flag):** Hired allies are marked as persistent at the game engine level (`kPersistent`). This prevents the engine's garbage collector from deleting or resetting them when you travel away, fast travel, or load new cells.
 *   **Dynamic State Self-Healing:** Whenever you fast travel, change cells, or call allies, the system checks if the engine attempted to reset the actor. If so, it instantly reconstructs their teammate flag, friendly factions, relationship ranks, and unaggressive AI state in milliseconds, preventing them from turning back into hostile bandits.
 *   **Dead Ally Purge (No Corpse Teleportation):** If a hired ally dies in combat, the plugin automatically detects their death, purges their state, and erases them from the tracking maps. This prevents their dead bodies from teleporting to you when changing cells or calling allies.
@@ -45,7 +57,7 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
 *   **Hard Reset Dismissal:** Dismissing an NPC uses a "Hard Reset" to flush their AI state. They are removed from your factions and will **randomly either immediately become hostile to you again or flee for their lives** (especially if they were originally an enemy like a Bandit). The gold's influence is gone, and their reaction is unpredictable!
 *   **No "Moaning" Sounds:** Cleaned up actor flags to ensure bribed NPCs don't make reanimation/zombie sounds.
 
-### 5. INI Configuration
+### 6. INI Configuration
 The plugin reads settings from `Data/SKSE/Plugins/ThePriceOfLoyalty.ini`. The file is **auto-generated** with defaults on first launch.
 
 | Setting | Type | Default | Description |
@@ -108,7 +120,19 @@ bEnableBackstab=1
 *   **Yapay Zeka Paket Sıfırlama & TDM Uyumluluğu:** Rüşvet işleminin hemen ardından çevredeki tüm müttefiklerin üzerinde motor seviyesinde `EvaluatePackage(true, true)` ve `StopCombat()` çalıştırılır. Bu, yapay zekanın savaş hedeflerini milisaniyeler içinde sıfırlayarak yoldaşların birbirleriyle dövüşmesini kesin olarak engeller ve `True Directional Movement (TDM)` ile `SmartTargetingNPC` modlarıyla tam uyumlu çalışmasını sağlar.
 *   **Animasyon Senkronizasyonu:** Rüşvet verdiğiniz an NPC yaptığı işi (oturma, yaslanma) anında bırakır ve takibe başlar.
 
-### 4. Gelişmiş Motor Düzeltmeleri ve Konfor Özellikleri
+### 4. Çeşitlendirilmiş Sınıflar ve Cinsiyete Duyarlı Dinamik İsimler
+*   **Çeşitlendirilmiş Sınıf Sistemi (Yöntem 2 Muhafızları):** Görev yerlerini bırakamayan esnaf veya quest NPC'lerine rüşvet verdiğinizde yerlerine gelen yedek muhafızlar artık tekdüze savaşçılar değildir. Her çağrıda 4 farklı gelişmiş savaş sınıfından biri olarak rastgele spawn olurlar:
+    *   **Kalkanlı Muhafız (Melee Guardian):** Tek el silah ve kalkan taşıyan ağır zırhlı koruyucu (Tank).
+    *   **Çift El Savaşçısı (Two-Handed Berserker):** Devasa baltalar veya büyük kılıçlar sallayan ağır zırhlı savaşçı (DPS).
+    *   **Keskin Nişancı Okçu (Agile Archer):** Yay kullanan ve hızlı hançerler taşıyan hafif zırhlı nişancı (Okçu).
+    *   **Yıkım Savaş Büyücüsü (Destruction Battlemage):** Alev fırtınaları ve yıldırımlar saçan dirençli büyücü (Savaş Büyücüsü).
+*   **Cinsiyete Duyarlı Dinamik İsimlendirme (1.440+ Kombinasyon):** Bir klon çağrıldığında veya sıradan bir düşmana rüşvet verildiğinde sistem arka planda karakterin cinsiyetini tespit eder (`base->GetSex()`). Cinsiyetine tamamen uyumlu lore-friendly ön adlar (Erkekler için Bjorn, Ragnar; Kadınlar için Freya, Lydia vb.) ve **kendi savaş sınıfıyla mükemmel uyumlu ünvanlar** (Büyücüler için *"the Spell-Weaver"*, Çift El kullananlar için *"Bone-Breaker"*, Okçular için *"Swift-Arrow"*, Kalkanlılar için *"Shield-Wall"*) birleştirilerek dinamik olarak atanır.
+*   **Efsanevi Easter Egg İsimleri (%3 Şans):** Yeni çağrılan her muhafızın veya rüşvet alan sıradan haydutun %3 efsanevi ihtimalle kurucunun şerefine özel bir unvan alma şansı vardır:
+    *   **Erkek Yoldaşlar:** Doğrudan **"King Arif"** adını alır.
+    *   **Kadın Yoldaşlar:** Doğrudan **"Queen Arif"** (Kraliçe Arif) adını alır.
+*   **Kişiselleştirilmiş Kovma Bildirimleri:** Yoldaşlarınızı azat ettiğinizde veya size saldırdıklarında ekranda çıkan bildirimlerde ve mesaj kutularında onların gerçek özel isimleri basılır (Örn: *"Camilla Swift-Arrow has been dismissed."* veya *"Bjorn Shield-Wall is not happy about being dismissed and attacks!"*). Kimi azat ettiğinizi her zaman tam olarak bilirsiniz.
+
+### 5. Gelişmiş Motor Düzeltmeleri ve Konfor Özellikleri
 *   **Motor Seviyesinde Kalıcılık (kPersistent Bayrağı):** Rüşvet verilen tüm haydutlar motor seviyesinde **persistent** olarak işaretlenir. Bu sayede siz uzaklaştığınızda veya hızlı seyahat ettiğinizde oyun motorunun çöp toplayıcısı tarafından silinmeleri veya sıfırlanmaları engellenir.
 *   **Dinamik Yapay Zeka Kendini Onarma (Self-Healing):** Işınlanma, hızlı seyahat veya hücre yüklenmelerinde oyun motorunun haydutları sıfırlamaya çalışması durumunda, sistem durumu milisaniyeler içinde teşhis eder; dost yoldaş faction'larını, agresyon değerlerini ve müttefik ilişkilerini otomatik olarak baştan aşağı sessizce onarır.
 *   **Ölü Temizleme Sistemi (Ceset Işınlanması Engeli):** Satın aldığınız yoldaş haydutlar savaşta ölürse, sistem onların ölümünü anında tespit eder, yapay zeka durumlarını kapatır ve takip haritamızdan tamamen siler. Böylece ölen yoldaşların cesetleri asla peşinizden ışınlanmaz.
@@ -118,7 +142,7 @@ bEnableBackstab=1
 *   **Kesin Kovma (Hard Reset):** Bir NPC'yi azat ettiğinizde AI verileri sıfırlanır, takımınızdan atılır ve **rastgele bir şekilde ya anında size tekrar düşman olurlar ya da canlarını kurtarmak için kaçarlar** (eğer aslen bir haydutsalar). Verdiğiniz rüşvetin etkisi geçtiği an tepkileri tamamen tahmin edilemez hale gelir.
 *   **Ses Düzeltmesi:** NPC'lerin rüşvetten sonra "zombi" gibi inleme sesleri çıkarması engellenerek normal insan sesleri korunmuştur.
 
-### 5. INI Ayarları
+### 6. INI Ayarları
 Eklenti ayarlarını `Data/SKSE/Plugins/ThePriceOfLoyalty.ini` dosyasından okur. Bu dosya ilk çalıştırmada **otomatik oluşturulur**.
 
 | Ayar | Tür | Varsayılan | Açıklama |
