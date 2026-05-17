@@ -13,6 +13,7 @@
 #include <mutex>
 #include <unordered_set>
 #include <new>
+#include <utility>
 
 // Debounce: prevent multiple simultaneous re-pacify tasks for the same actor
 static std::mutex g_pacifyMutex;
@@ -56,7 +57,15 @@ namespace Loyalty {
         return false;
     }
 
-    std::string GenerateRandomName(bool a_isMercenary) {
+    enum class MercenaryClass {
+        kMelee,
+        kTwoHanded,
+        kArcher,
+        kMage,
+        kGeneric
+    };
+
+    std::string GenerateRandomNameForClass(MercenaryClass a_class) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
 
@@ -76,7 +85,19 @@ namespace Loyalty {
             "Arif"
         };
 
-        static const std::vector<std::string> titles = {
+        static const std::vector<std::string> meleeTitles = {
+            "the Bold", "Iron-Sides", "Shield-Wall", "the Fierce", "Steel-Heart", "the Grim", "Bear-Skin"
+        };
+        static const std::vector<std::string> twoHandedTitles = {
+            "Iron-Eye", "Blood-Drinker", "Stone-Fist", "Bone-Breaker", "Beard-Splitter", "the Unbreakable", "Red-Hand"
+        };
+        static const std::vector<std::string> archerTitles = {
+            "the Quick", "Sharp-Blade", "Swift-Foot", "Shadow-Stalker", "Swift-Arrow", "the Whisperer", "Silent-Step", "Crow-Feather"
+        };
+        static const std::vector<std::string> mageTitles = {
+            "Cold-Heart", "Frost-Veins", "Storm-Bringer", "Dusk-Walker", "the Spell-Weaver", "Fire-Heart", "the Wise"
+        };
+        static const std::vector<std::string> genericTitles = {
             "the Bold", "Iron-Eye", "Blood-Drinker", "the Quick", "Cold-Heart",
             "Sharp-Blade", "Stone-Fist", "Swift-Foot", "Shadow-Stalker", "Bone-Breaker",
             "the Grim", "Shield-Wall", "One-Eye", "Swift-Arrow", "the Fierce",
@@ -87,18 +108,33 @@ namespace Loyalty {
         };
 
         std::uniform_int_distribution<> firstNameDis(0, firstNames.size() - 1);
-        std::uniform_int_distribution<> titleDis(0, titles.size() - 1);
-
         std::string firstName = firstNames[firstNameDis(gen)];
-        std::string title = titles[titleDis(gen)];
+        std::string title;
+
+        if (a_class == MercenaryClass::kMelee) {
+            std::uniform_int_distribution<> titleDis(0, meleeTitles.size() - 1);
+            title = meleeTitles[titleDis(gen)];
+        } else if (a_class == MercenaryClass::kTwoHanded) {
+            std::uniform_int_distribution<> titleDis(0, twoHandedTitles.size() - 1);
+            title = twoHandedTitles[titleDis(gen)];
+        } else if (a_class == MercenaryClass::kArcher) {
+            std::uniform_int_distribution<> titleDis(0, archerTitles.size() - 1);
+            title = archerTitles[titleDis(gen)];
+        } else if (a_class == MercenaryClass::kMage) {
+            std::uniform_int_distribution<> titleDis(0, mageTitles.size() - 1);
+            title = mageTitles[titleDis(gen)];
+        } else {
+            std::uniform_int_distribution<> titleDis(0, genericTitles.size() - 1);
+            title = genericTitles[titleDis(gen)];
+        }
 
         return firstName + " " + title;
     }
 
-    void AssignRandomNameToActor(RE::Actor* a_actor, bool a_isMercenary) {
+    void AssignRandomNameToActor(RE::Actor* a_actor, MercenaryClass a_class) {
         if (!a_actor) return;
         
-        std::string randomName = GenerateRandomName(a_isMercenary);
+        std::string randomName = GenerateRandomNameForClass(a_class);
         
         auto extraText = a_actor->extraList.GetByType<RE::ExtraTextDisplayData>();
         if (extraText) {
@@ -217,10 +253,29 @@ namespace Loyalty {
                     
                     RE::DebugNotification("I must remain here, but my hired mercenary will protect you!");
 
-                    // Spawn a clean generic mercenary (0x000A1A2E / Mercenary template)
-                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x000A1A2E);
+                    // Spawn a clean generic mercenary based on a randomly selected combat archetype
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> mercenaryTemplates = {
+                        { 0x000A1A2E, MercenaryClass::kMelee },      // Savaşçı (Tek El + Kalkan)
+                        { 0x0007EB3A, MercenaryClass::kTwoHanded },   // Çift El Silah Kullanan (Two-Handed)
+                        { 0x0007EB39, MercenaryClass::kArcher },      // Okçu (Ranger / Archer)
+                        { 0x00045BE1, MercenaryClass::kMage }         // Büyücü (Battlemage / Mage)
+                    };
+
+                    static std::random_device rd;
+                    static std::mt19937 gen(rd());
+                    std::uniform_int_distribution<> classDis(0, mercenaryTemplates.size() - 1);
+                    auto selectedPair = mercenaryTemplates[classDis(gen)];
+                    std::uint32_t selectedBaseID = selectedPair.first;
+                    MercenaryClass selectedClass = selectedPair.second;
+
+                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(selectedBaseID);
                     if (!mercenaryBase) {
-                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00045BE0); // Fallback to soldier
+                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x000A1A2E); // Fallback to Sword & Shield
+                        selectedClass = MercenaryClass::kMelee;
+                    }
+                    if (!mercenaryBase) {
+                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00045BE0); // Fallback 2
+                        selectedClass = MercenaryClass::kArcher;
                     }
 
                     if (mercenaryBase) {
@@ -228,7 +283,7 @@ namespace Loyalty {
                         auto spawnedActor = spawnedRef ? spawnedRef->As<RE::Actor>() : nullptr;
                         if (spawnedActor) {
                             targetActor = spawnedActor;
-                            AssignRandomNameToActor(targetActor, true);
+                            AssignRandomNameToActor(targetActor, selectedClass);
                         }
                     }
 
@@ -271,7 +326,7 @@ namespace Loyalty {
                     // Herhangi bir işlem yapmıyoruz, targetActor = a_actor olarak kalıyor!
                     
                     if (!isUnique) {
-                        AssignRandomNameToActor(targetActor, false);
+                        AssignRandomNameToActor(targetActor, MercenaryClass::kGeneric);
                     }
                 }
             }
