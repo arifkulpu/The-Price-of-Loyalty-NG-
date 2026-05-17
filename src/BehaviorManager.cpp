@@ -5,12 +5,14 @@
 #include "Settings.hpp"
 #include <RE/C/Character.h>
 #include <RE/A/ActorValueOwner.h>
+#include <RE/E/ExtraTextDisplayData.h>
 #include <REL/Relocation.h>
 #include <random>
 #include <thread>
 #include <chrono>
 #include <mutex>
 #include <unordered_set>
+#include <new>
 
 // Debounce: prevent multiple simultaneous re-pacify tasks for the same actor
 static std::mutex g_pacifyMutex;
@@ -52,6 +54,55 @@ namespace Loyalty {
             }
         }
         return false;
+    }
+
+    std::string GenerateRandomName(bool a_isMercenary) {
+        static const std::vector<std::string> firstNames = {
+            "Bjorn", "Thorald", "Rurik", "Sigurd", "Valgard", "Freya", "Astrid", "Yrsa",
+            "Hrogar", "Torvald", "Erik", "Gunther", "Karl", "Sven", "Olaf", "Marcus",
+            "Lucan", "Quintus", "Decimus", "Tiberius", "Alistair", "Hadvar", "Aldis",
+            "Jean", "Raymond", "Giraud", "Arvel", "Ragnar", "Skjold", "Einar", "Sigtryggr",
+            "Ulfric", "Gunnar", "Rollo", "Leif", "Ingolf", "Harald", "Knut", "Ivar",
+            "Hilda", "Gerd", "Sigrid", "Ingrid", "Solveig", "Dagny", "Alfhild", "Borghild"
+        };
+
+        static const std::vector<std::string> titles = {
+            "the Bold", "Iron-Eye", "Blood-Drinker", "the Quick", "Cold-Heart",
+            "Sharp-Blade", "Stone-Fist", "Swift-Foot", "Shadow-Stalker", "Bone-Breaker",
+            "the Grim", "Shield-Wall", "One-Eye", "Swift-Arrow", "the Fierce",
+            "Frost-Veins", "Wolf-Claw", "Beard-Splitter", "the Unbreakable", "Iron-Sides",
+            "the Whisperer", "Silent-Step", "Bear-Skin", "Red-Hand", "the Cruel",
+            "Dusk-Walker", "Storm-Bringer", "Crow-Feather", "Gold-Chaser", "Steel-Heart"
+        };
+
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<> firstNameDis(0, firstNames.size() - 1);
+        std::uniform_int_distribution<> titleDis(0, titles.size() - 1);
+
+        std::string firstName = firstNames[firstNameDis(gen)];
+        std::string title = titles[titleDis(gen)];
+
+        return firstName + " " + title;
+    }
+
+    void AssignRandomNameToActor(RE::Actor* a_actor, bool a_isMercenary) {
+        if (!a_actor) return;
+        
+        std::string randomName = GenerateRandomName(a_isMercenary);
+        
+        auto extraText = a_actor->extraList.GetByType<RE::ExtraTextDisplayData>();
+        if (extraText) {
+            extraText->SetName(randomName.c_str());
+        } else {
+            auto newExtra = RE::BSExtraData::Create<RE::ExtraTextDisplayData>();
+            if (newExtra) {
+                new (newExtra) RE::ExtraTextDisplayData(randomName.c_str());
+                a_actor->extraList.Add(newExtra);
+            }
+        }
+        
+        SKSE::log::info("[NAME_ASSIGN] Assigned name '{}' to actor FormID={:08X}", randomName, a_actor->GetFormID());
     }
 
     void SetupAllyFactionsAndAI(RE::Actor* a_actor, RE::PlayerCharacter* a_player) {
@@ -168,6 +219,7 @@ namespace Loyalty {
                         auto spawnedActor = spawnedRef ? spawnedRef->As<RE::Actor>() : nullptr;
                         if (spawnedActor) {
                             targetActor = spawnedActor;
+                            AssignRandomNameToActor(targetActor, true);
                         }
                     }
 
@@ -204,10 +256,14 @@ namespace Loyalty {
                     }
                 } else {
                     // ==========================================================
-                    // YÖNTEM 3: Doğal Haliyle Bırakmak (Banditler, Vampirler vb.)
+                    // YÖNTEM 3: Doğal Haliyle Bırakmak (Generic NPC'ler)
                     // ==========================================================
                     SKSE::log::info("[BRIBE_RECRUIT] Generic NPC '{}' bribed. Recruiting the original actor directly.", a_actor->GetName());
                     // Herhangi bir işlem yapmıyoruz, targetActor = a_actor olarak kalıyor!
+                    
+                    if (!isUnique) {
+                        AssignRandomNameToActor(targetActor, false);
+                    }
                 }
             }
 
@@ -419,7 +475,8 @@ namespace Loyalty {
             if (roll <= 50) {
                 // Saldır
                 StartCombat(a_actor, player);
-                RE::DebugNotification("He is not happy about being dismissed and attacks!");
+                std::string attackMsg = std::string(a_actor->GetName()) + " is not happy about being dismissed and attacks!";
+                RE::DebugNotification(attackMsg.c_str());
             } else {
                 // Kaç
                 if (avOwner) {
@@ -428,11 +485,13 @@ namespace Loyalty {
                 }
                 a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
                 a_actor->EvaluatePackage(true, true);
-                RE::DebugNotification("He decided to run for his life!");
+                std::string runMsg = std::string(a_actor->GetName()) + " decided to run for their life!";
+                RE::DebugNotification(runMsg.c_str());
             }
         }
 
-        RE::DebugNotification("You have dismissed your ally.");
+        std::string dismissMsg = std::string(a_actor->GetName()) + " has been dismissed.";
+        RE::DebugNotification(dismissMsg.c_str());
     }
 
     void BehaviorManager::HandleTreacherousBehavior(RE::Actor* a_actor) {
