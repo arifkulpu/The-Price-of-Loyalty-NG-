@@ -21,18 +21,27 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
         *   *Non-hostile NPCs (Guards, Civilians) are not affected by this dynamic risk.*
 *   **Special Classes (Guards):** Guards have specialized pricing and loyalty checks. Bribing a lawman is expensive but grants high-tier combat support.
 *   **Speech Skill Influence:** The higher your Speech skill, the cheaper it is to bribe. At Speech 100, the required gold is reduced by **50%**. Invest in persuasion for maximum gold efficiency.
-*   **Bribe Success Probability:** Success is not guaranteed. The chance depends on your offer:
+*   **Bribe Success Probability & Safe Bribery:** Success is not guaranteed. The chance depends on your offer. However, **your gold is only deducted if the bribe attempt succeeds.** If the NPC rejects the offer, you keep your gold!
     *   **Base Chance:** Offering the exact required amount grants a **75%** success rate.
     *   **Risk Factor:** Success is capped at **95%**. There is always a small chance of refusal, even with high bribes!
 *   **Save Game Persistence:** All NPC trait assignments are saved with your game and reloaded correctly, so traits are permanent across sessions.
 
 ### 3. Combat & Recruitment Mechanics
 *   **Surrender Mechanic:** Hostile NPCs (Bandits, Forsworn, etc.) cannot be bribed while at full health. You must reduce their health below **30%** to break their will and make them accept your gold.
-*   **Teammate System:** Bribed NPCs become true teammates (`kPlayerTeammate`). They will draw their weapons when you do and fight your enemies.
+*   **Teammate System:** Bribed NPCs become true teammates (`kPlayerTeammate`). They will draw their weapons when you do and fight your enemies. A permanent relationship rank of **3 (Ally)** is established between both parties, ensuring stability and preventing sudden AI-driven combat re-entry.
+*   **Dual Faction & Friendly Fire Protection:** NPCs are added to both `PotentialFollowerFaction` (`0x0005C84D`) and `CurrentFollowerFaction` (`0x0005C84E`). This ensures that the engine's built-in follower Friendly Fire dampening rules apply, preventing allies from turning on you due to stray spell/sword hits in combat.
+*   **Peaceful Guardian AI (Aggression & Assistance Balance):** Hired allies are set to `Aggression = 0` (Unaggressive) and `Assistance = 2` (Helps Friends & Allies) while following you. This guarantees they will **never pre-emptively attack guards or innocent civilians** in cities (like Riverwood), but will **instantly jump in to defend you and other companions** the second a battle breaks out. On betrayal or dismissal, their aggression is restored to make them hostile again.
+*   **Instant Potion Healing:** Upon accepting a bribe, the NPC's **Health, Magicka, and Stamina are instantly restored to 100%**, simulating a healing potion being shared. The notification reads `"NPC is now your loyal teammate. (Healed!)"`.
+*   **AI Package Flushing & TDM Compatibility:** Immediately after the bribe, an engine-level `EvaluatePackage(true, true)` and `StopCombat()` is run on all surrounding allies. This flushes their AI combat target list in milliseconds, immediately stopping followers from targeting each other and making them fully compatible with mods like `True Directional Movement (TDM)` and `SmartTargetingNPC`.
 *   **Animation Sync:** NPCs will immediately stop sandbox activities (sitting, leaning) upon being bribed to follow you.
 
-### 4. Utility & Quality of Life
-*   **Call Allies (Teleportation):** Pressing the **'B'** key while not targeting an NPC teleports all active bribed allies directly to your position.
+### 4. Advanced Engine Fixes & Quality of Life
+*   **Engine-Level Kalıcılık (kPersistent Flag):** Hired allies are marked as persistent at the game engine level (`kPersistent`). This prevents the engine's garbage collector from deleting or resetting them when you travel away, fast travel, or load new cells.
+*   **Dynamic State Self-Healing:** Whenever you fast travel, change cells, or call allies, the system checks if the engine attempted to reset the actor. If so, it instantly reconstructs their teammate flag, friendly factions, relationship ranks, and unaggressive AI state in milliseconds, preventing them from turning back into hostile bandits.
+*   **Dead Ally Purge (No Corpse Teleportation):** If a hired ally dies in combat, the plugin automatically detects their death, purges their state, and erases them from the tracking maps. This prevents their dead bodies from teleporting to you when changing cells or calling allies.
+*   **Persistent Relationship Map (Mutual Alliance):** Relationships between allies are managed via a persistent tracking map rather than an active-distance-list. This guarantees that far-away teammates (like archers or mages) are immediately registered as mutual allies of close-range fighters, completely eliminating combat confusion and friendly-fire mutinies.
+*   **Call Allies (Teleportation):** Pressing the **'B'** key while not targeting an NPC teleports all active, living bribed allies directly to your position.
+*   **Auto-Teleport on Transitions:** Whenever you fast travel, go through loading doors, or enter loaded areas, all your active hired allies automatically teleport to your side.
 *   **Hard Reset Dismissal:** Dismissing an NPC uses a "Hard Reset" to flush their AI state. They are removed from your factions and will **randomly either immediately become hostile to you again or flee for their lives** (especially if they were originally an enemy like a Bandit). The gold's influence is gone, and their reaction is unpredictable!
 *   **No "Moaning" Sounds:** Cleaned up actor flags to ensure bribed NPCs don't make reanimation/zombie sounds.
 
@@ -46,6 +55,8 @@ The plugin reads settings from `Data/SKSE/Plugins/ThePriceOfLoyalty.ini`. The fi
 | `iCostPerLevel` | Integer | `50` | The additional gold cost added per level of the NPC. |
 | `iBetrayalMinTime`| Integer | `60` | Minimum time (in seconds) before a treacherous NPC betrays you. |
 | `iBetrayalMaxTime`| Integer | `300` | Maximum time (in seconds) before a treacherous NPC betrays you. |
+| `iBetrayalChanceLowBribe` | Integer | `60` | The percentage chance (0-100) that a bandit becomes treacherous after a low offer bribe. |
+| `iBetrayalChanceHighBribe` | Integer | `15` | The percentage chance (0-100) that a bandit becomes treacherous after a high offer bribe. |
 | `fBaseDifficulty` | Float | `1.0` | Global multiplier for bribe costs. `2.0` = twice as expensive, `0.5` = half price. |
 | `bEnableBackstab` | Boolean | `1` | Enables the Treacherous betrayal mechanic. Set to `0` to disable all NPC betrayals. |
 
@@ -57,6 +68,8 @@ iBaseBribeCost=500
 iCostPerLevel=50
 iBetrayalMinTime=60
 iBetrayalMaxTime=300
+iBetrayalChanceLowBribe=60
+iBetrayalChanceHighBribe=15
 fBaseDifficulty=1.0
 bEnableBackstab=1
 ```
@@ -80,18 +93,28 @@ bEnableBackstab=1
         *   *Muhafızlar ve siviller bu dinamik riskten etkilenmezler.*
 *   **Özel Sınıflar (Muhafızlar):** Şehir muhafızları özel fiyatlandırmaya ve sadakat kontrollerine sahiptir. Bir kanun adamını satın almak pahalıdır ancak güçlü savaş desteği sağlar.
 *   **Konuşma Becerisi (Speech) Etkisi:** Konuşma beceriniz ne kadar yüksekse rüşvet vermek o kadar ucuza mal olur. Speech **100'de** gereken altın miktarı **%50 azalır**. Dil döndürmeyi bilen karakterler her zaman avantajlıdır.
-*   **Rüşvet Başarı Olasılığı:** Rüşvet vermek artık garanti değildir. Başarı şansı teklifinize bağlıdır:
+*   **Rüşvet Başarı Olasılığı & Güvenli Rüşvet:** Rüşvet vermek artık garanti değildir. Başarı şansı teklifinize bağlıdır. Ancak **altınınız sadece rüşvet başarıyla kabul edildiğinde envanterinizden eksilir.** Eğer teklifiniz reddedilirse altın cebinizde kalır!
     *   **Temel Şans:** İstenen miktarı tam ödemek **%75** başarı şansı verir.
     *   **Risk Faktörü:** Başarı şansı **%95** ile sınırlıdır. En yüksek rüşveti verseniz bile her zaman küçük bir reddedilme riski vardır!
 *   **Kayıt Oyunu Desteği:** Tüm NPC kişilik atamaları kayıt dosyasına yazılır ve doğru şekilde yüklenir; yani her NPC'nin karakteri kalıcıdır.
 
 ### 3. Savaş ve Safa Katma Mekanikleri
 *   **Teslim Olma Mekaniği:** Düşman NPC'ler (Haydutlar vb.) canları tamken rüşveti reddeder. Onları safınıza katmak için canlarını **%30'un altına** indirip teslim olmaya zorlamalısınız.
-*   **Müttefik Sistemi:** Rüşvet alan NPC'ler gerçek bir takım arkadaşı (`kPlayerTeammate`) olur. Siz silah çektiğinizde onlar da çeker ve düşmanlarınıza saldırırlar.
+*   **Müttefik Sistemi:** Rüşvet alan NPC'ler gerçek bir takım arkadaşı (`kPlayerTeammate`) olur. Siz silah çektiğinizde onlar da çeker ve düşmanlarınıza saldırırlar. Ayrıca oyuncu ile NPC arasında kalıcı olarak **3 (Müttefik/Ally)** ilişki derecesi kurularak yapay zekâ hatalarından dolayı aniden tekrar saldırmaları kesin olarak engellenir.
+*   **Çift Faction ve Dost Ateşi Koruması:** Müttefik yapılan NPC'ler hem `PotentialFollowerFaction` (`0x0005C84D`) hem de oyunun resmi yoldaş grubu olan **`CurrentFollowerFaction` (`0x0005C84E`)** grubuna eklenir. Bu sayede motorun kendi dost ateşi (Friendly Fire) koruması etkinleşir; savaş esnasında kaza ara çarpan büyü/kılıç darbeleri nedeniyle size düşman olmazlar.
+*   **Şehir ve Muhafız Dostluğu (Faction & Suç Temizliği):** Müttefik yapılan NPC'ler, oyuncunun kendi grubu olan **`PlayerFaction` (`0x00000013`)** grubuna eklenir. Ayrıca üzerlerindeki düşman suç grupları (**`CrimeFactionBandit`**, **`CrimeFactionForsworn`**, **`CrimeFactionWarlock`**) tamamen silinir. Bu sayede şehirlerde, hanlarda ve yerleşim yerlerinde muhafızlar ve siviller tarafından oyuncunun yandaşı olarak barışçıl algılanırlar; sivil uyarı diyalogları ve muhafız saldırıları kesin olarak önlenir.
+*   **Barışçıl Muhafız Yapay Zekası (Aggression & Assistance Dengesi):** Müttefik haydutlar yanınızdayken **`Aggression = 0` (Barışçıl)** ve **`Assistance = 2` (Dostlara Yardım Eder)** olarak ayarlanır. Bu sayede şehirlerde veya yerleşkelerde (Riverwood vb.) muhafızlara ve masum sivillere **asla durup dururken saldırmazlar.** Ancak size veya müttefiklerinize bir düşman saldırdığı an tam sadakatle yardıma koşarlar! İhanet veya kovulma anında agresyonları normale döner.
+*   **Anlık İksir İyileştirmesi:** Rüşvet kabul edildiği anda NPC'nin **Can (Health), Büyü (Magicka) ve Kondisyon (Stamina) değerleri anında %100'e doldurulur** (sanki onlara şifa iksiri vermişsiniz gibi). Sol üstte `"NPC is now your loyal teammate. (Healed!)"` bildirimi gösterilir.
+*   **Yapay Zeka Paket Sıfırlama & TDM Uyumluluğu:** Rüşvet işleminin hemen ardından çevredeki tüm müttefiklerin üzerinde motor seviyesinde `EvaluatePackage(true, true)` ve `StopCombat()` çalıştırılır. Bu, yapay zekanın savaş hedeflerini milisaniyeler içinde sıfırlayarak yoldaşların birbirleriyle dövüşmesini kesin olarak engeller ve `True Directional Movement (TDM)` ile `SmartTargetingNPC` modlarıyla tam uyumlu çalışmasını sağlar.
 *   **Animasyon Senkronizasyonu:** Rüşvet verdiğiniz an NPC yaptığı işi (oturma, yaslanma) anında bırakır ve takibe başlar.
 
-### 4. Kullanıcı Deneyimi ve Kolaylıklar
-*   **Müttefik Çağırma (Işınlanma):** Bir NPC'ye bakmıyorken **'B'** tuşuna basmak, tüm aktif müttefiklerinizi anında yanınıza ışınlar.
+### 4. Gelişmiş Motor Düzeltmeleri ve Konfor Özellikleri
+*   **Motor Seviyesinde Kalıcılık (kPersistent Bayrağı):** Rüşvet verilen tüm haydutlar motor seviyesinde **persistent** olarak işaretlenir. Bu sayede siz uzaklaştığınızda veya hızlı seyahat ettiğinizde oyun motorunun çöp toplayıcısı tarafından silinmeleri veya sıfırlanmaları engellenir.
+*   **Dinamik Yapay Zeka Kendini Onarma (Self-Healing):** Işınlanma, hızlı seyahat veya hücre yüklenmelerinde oyun motorunun haydutları sıfırlamaya çalışması durumunda, sistem durumu milisaniyeler içinde teşhis eder; dost yoldaş faction'larını, agresyon değerlerini ve müttefik ilişkilerini otomatik olarak baştan aşağı sessizce onarır.
+*   **Ölü Temizleme Sistemi (Ceset Işınlanması Engeli):** Satın aldığınız yoldaş haydutlar savaşta ölürse, sistem onların ölümünü anında tespit eder, yapay zeka durumlarını kapatır ve takip haritamızdan tamamen siler. Böylece ölen yoldaşların cesetleri asla peşinizden ışınlanmaz.
+*   **Kalıcı Takip Haritası (Mesafe Bağımsız Müttefiklik):** Yoldaşların birbiriyle olan ilişkileri anlık çevre listesi yerine kalıcı takip haritası üzerinden güncellenir. Bu sayede savaştaki uzaktaki okçular veya büyücüler mesafe nedeniyle gözden kaçmaz; hepsi birbirini müttefik olarak tanır ve takım içi kavgalar/dost ateşi isyanları tamamen engellenir.
+*   **Müttefik Çağırma (Işınlanma):** Bir NPC'ye bakmıyorken **'B'** tuşuna basmak, o an hayatta olan tüm aktif müttefiklerinizi anında yanınıza ışınlar.
+*   **Otomatik Hücre & Geçiş Temizliği:** Hızlı seyahat (fast travel) yaptığınızda, han/mağara gibi yükleme ekranlı kapılardan geçtiğinizde veya hücre değiştiğinde (mesafe ne olursa olsun) müttefiklerinizin **savaş durumları ve alarmları motor seviyesinde otomatik olarak sıfırlanır, silahları kınına sokulur** ve gerekirse yanınıza ışınlanırlar. Böylece geçişlerde AI takılmaları veya sebepsiz anlık kavgalar tamamen önlenir.
 *   **Kesin Kovma (Hard Reset):** Bir NPC'yi azat ettiğinizde AI verileri sıfırlanır, takımınızdan atılır ve **rastgele bir şekilde ya anında size tekrar düşman olurlar ya da canlarını kurtarmak için kaçarlar** (eğer aslen bir haydutsalar). Verdiğiniz rüşvetin etkisi geçtiği an tepkileri tamamen tahmin edilemez hale gelir.
 *   **Ses Düzeltmesi:** NPC'lerin rüşvetten sonra "zombi" gibi inleme sesleri çıkarması engellenerek normal insan sesleri korunmuştur.
 
@@ -105,6 +128,8 @@ Eklenti ayarlarını `Data/SKSE/Plugins/ThePriceOfLoyalty.ini` dosyasından okur
 | `iCostPerLevel` | Tam sayı | `50` | NPC'nin her seviyesi için eklenen ekstra altın maliyeti. |
 | `iBetrayalMinTime`| Tam sayı | `60` | Hain NPC'nin size ihanet etmesinden önceki minimum süre (saniye). |
 | `iBetrayalMaxTime`| Tam sayı | `300` | Hain NPC'nin size ihanet etmesinden önceki maksimum süre (saniye). |
+| `iBetrayalChanceLowBribe` | Tam sayı | `60` | Düşük rüşvet teklif edildiğinde haydutun hain olma şansı (% olarak, 0-100 arası). |
+| `iBetrayalChanceHighBribe`| Tam sayı | `15` | Yüksek rüşvet teklif edildiğinde haydutun hain olma şansı (% olarak, 0-100 arası). |
 | `fBaseDifficulty` | Ondalık | `1.0` | Rüşvet maliyetleri için global çarpan. `2.0` = iki katı pahalı, `0.5` = yarı fiyat. |
 | `bEnableBackstab` | Boolean | `1` | Hain ihanet mekaniğini etkinleştirir. `0` yaparsanız hiçbir NPC ihanet etmez. |
 
@@ -116,6 +141,8 @@ iBaseBribeCost=500
 iCostPerLevel=50
 iBetrayalMinTime=60
 iBetrayalMaxTime=300
+iBetrayalChanceLowBribe=60
+iBetrayalChanceHighBribe=15
 fBaseDifficulty=1.0
 bEnableBackstab=1
 ```

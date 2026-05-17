@@ -163,12 +163,15 @@ namespace Loyalty {
                 return;
             }
 
-            if (goldForm) {
-                player->RemoveItem(goldForm, static_cast<int32_t>(choiceAmount), RE::ITEM_REMOVE_REASON::kRemove, nullptr, target);
-                RE::DebugNotification("Gold paid.");
+            bool success = TraitManager::GetSingleton()->RollForSuccess(target, choiceAmount);
+
+            if (success) {
+                if (goldForm) {
+                    player->RemoveItem(goldForm, static_cast<int32_t>(choiceAmount), RE::ITEM_REMOVE_REASON::kRemove, nullptr, target);
+                    RE::DebugNotification("Gold paid.");
+                }
             }
 
-            bool success = TraitManager::GetSingleton()->RollForSuccess(target, choiceAmount);
             bool isLow = (a_msg == Message::kUnk0);
             BehaviorManager::GetSingleton()->ProcessBribeResult(target, success, isLow);
         }

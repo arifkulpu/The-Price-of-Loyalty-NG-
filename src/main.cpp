@@ -14,6 +14,12 @@ namespace Loyalty {
             input->AddEventSink(InteractionHandler::GetSingleton());
         }
 
+        auto eventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton();
+        if (eventSourceHolder) {
+            eventSourceHolder->AddEventSink<RE::TESCellFullyLoadedEvent>(BehaviorManager::GetSingleton());
+            SKSE::log::info("Cell fully loaded event sink registered.");
+        }
+
         SKSE::log::info("The Price of Loyalty Initialized.");
     }
 }
