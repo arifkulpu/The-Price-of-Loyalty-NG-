@@ -80,9 +80,19 @@ namespace Loyalty {
             }
         }
 
-        // 2. Check base form's faction list (handles silent/inactive/rank -1 factions)
+        // 2. Check engine-level Vendor / Blacksmith Keywords (extremely robust for vanilla & modded NPCs)
+        if (a_actor->HasKeywordString("ActorTypeVendor") || a_actor->HasKeywordString("ActorTypeBlacksmith")) {
+            return true;
+        }
+
         auto base = a_actor->GetActorBase();
         if (base) {
+            // Check base form's direct keywords
+            if (base->HasKeywordString("ActorTypeVendor") || base->HasKeywordString("ActorTypeBlacksmith")) {
+                return true;
+            }
+
+            // 3. Check base form's faction list (handles silent/inactive/rank -1 factions)
             for (const auto& fData : base->factions) {
                 if (fData.faction) {
                     for (auto fID : merchantFactions) {
@@ -92,9 +102,28 @@ namespace Loyalty {
                     }
                 }
             }
+
+            // 4. Check Template Factions and Keywords (for templated merchants/innkeepers)
+            if (base->baseTemplateForm) {
+                auto tempNPC = base->baseTemplateForm->As<RE::TESNPC>();
+                if (tempNPC) {
+                    if (tempNPC->HasKeywordString("ActorTypeVendor") || tempNPC->HasKeywordString("ActorTypeBlacksmith")) {
+                        return true;
+                    }
+                    for (const auto& fData : tempNPC->factions) {
+                        if (fData.faction) {
+                            for (auto fID : merchantFactions) {
+                                if (fData.faction->GetFormID() == fID) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // 3. Fail-safe text check on display name
+        // 5. Fail-safe text check on display name
         if (a_actor->GetName()) {
             std::string name = a_actor->GetName();
             std::transform(name.begin(), name.end(), name.begin(), ::tolower);
