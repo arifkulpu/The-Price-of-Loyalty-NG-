@@ -386,22 +386,25 @@ namespace Loyalty {
                         { 0x00039CF7, MercenaryClass::kMelee }       // Bandit Melee (level 1-5)
                     };
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highMelee = {
-                        { 0x00045BE0, MercenaryClass::kMelee },      // Whiterun Guard (level 20+)
-                        { 0x00046794, MercenaryClass::kMelee }       // Imperial Soldier (level 10+)
+                        { 0x00045BE0, MercenaryClass::kMelee },      // Whiterun Guard
+                        { 0x00046794, MercenaryClass::kMelee },      // Imperial Soldier (Sword & Shield)
+                        { 0x00046EFD, MercenaryClass::kMelee }       // Stormcloak Soldier (Sword & Shield)
                     };
 
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowTwoHanded = {
                         { 0x00037C2E, MercenaryClass::kTwoHanded }   // Bandit Thug (level 5)
                     };
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highTwoHanded = {
-                        { 0x00046EFE, MercenaryClass::kTwoHanded }   // Stormcloak Officer (level 10+)
+                        { 0x00046EFE, MercenaryClass::kTwoHanded }   // Stormcloak Soldier (Two-Handed)
                     };
 
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowArcher = {
                         { 0x0004622A, MercenaryClass::kArcher }      // Imperial Archer (level 4)
                     };
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highArcher = {
-                        { 0x0004622B, MercenaryClass::kArcher }      // Whiterun Guard Archer (level 20+)
+                        { 0x0004622B, MercenaryClass::kArcher },      // Whiterun Guard Archer
+                        { 0x0004622A, MercenaryClass::kArcher },      // Imperial Archer
+                        { 0x00046EFC, MercenaryClass::kArcher }       // Stormcloak Archer
                     };
 
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowMage = {
