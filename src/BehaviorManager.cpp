@@ -137,15 +137,88 @@ namespace Loyalty {
         if (!a_actor) return;
 
         if (a_success) {
-            EffectManager::GetSingleton()->PlayAcceptanceEffects(a_actor);
-            
-            a_actor->StopInteractingQuick(true);
-            a_actor->StopCombat();
-            a_actor->DrawWeaponMagicHands(false);
-
+            auto player = RE::PlayerCharacter::GetSingleton();
+            RE::Actor* targetActor = a_actor;
             auto processLists = RE::ProcessLists::GetSingleton();
+
+            if (player) {
+                auto base = a_actor->GetActorBase();
+                bool isUnique = base && base->IsUnique();
+                bool isEssential = base && base->IsEssential();
+                
+                auto merchantFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00051596);
+                bool isMerchant = merchantFaction && a_actor->IsInFaction(merchantFaction);
+
+                if (isEssential || (isUnique && isMerchant)) {
+                    // ==========================================================
+                    // YÖNTEM 2: Benim Yerime Adamımı Al (Esnaf ve Quest NPC'leri)
+                    // ==========================================================
+                    SKSE::log::info("[BRIBE_RECRUIT] Unique Quest/Merchant NPC '{}' bribed. Spawning a mercenary instead.", a_actor->GetName());
+                    
+                    RE::DebugNotification("I must remain here, but my hired mercenary will protect you!");
+
+                    // Spawn a clean generic mercenary (0x000A1A2E / Mercenary template)
+                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x000A1A2E);
+                    if (!mercenaryBase) {
+                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00045BE0); // Fallback to soldier
+                    }
+
+                    if (mercenaryBase) {
+                        auto spawnedRef = player->PlaceObjectAtMe(mercenaryBase, false);
+                        auto spawnedActor = spawnedRef ? spawnedRef->As<RE::Actor>() : nullptr;
+                        if (spawnedActor) {
+                            targetActor = spawnedActor;
+                        }
+                    }
+
+                    // Orijinal satıcı/quest NPC'sini barışçıl duruma getirip dükkanına geri gönderiyoruz
+                    a_actor->StopCombat();
+                    if (processLists) {
+                        processLists->StopCombatAndAlarmOnActor(a_actor, true);
+                    }
+                    a_actor->EvaluatePackage(true, true);
+
+                } else if (isUnique && !isEssential) {
+                    // ==========================================================
+                    // YÖNTEM 1: Kimlik Değişimi (Gizli Klonlama / Sihirbazlık)
+                    // ==========================================================
+                    SKSE::log::info("[BRIBE_RECRUIT] Unique minor NPC '{}' bribed. Performing seamless Identity Swap.", a_actor->GetName());
+                    
+                    auto cloneRef = a_actor->PlaceObjectAtMe(base, false);
+                    auto cloneActor = cloneRef ? cloneRef->As<RE::Actor>() : nullptr;
+                    if (cloneActor) {
+                        // Klonu orijinalin konumuna ve açısına tam olarak oturtuyoruz
+                        cloneActor->SetPosition(a_actor->GetPosition(), true);
+                        cloneActor->SetAngle(a_actor->GetAngle());
+
+                        // Orijinal eski buggy aktörü anında disable edip siliyoruz
+                        a_actor->StopCombat();
+                        if (processLists) {
+                            processLists->StopCombatAndAlarmOnActor(a_actor, true);
+                        }
+                        a_actor->Disable();
+                        a_actor->SetDelete(true);
+
+                        // Hedefi klona kaydırıyoruz
+                        targetActor = cloneActor;
+                    }
+                } else {
+                    // ==========================================================
+                    // YÖNTEM 3: Doğal Haliyle Bırakmak (Banditler, Vampirler vb.)
+                    // ==========================================================
+                    SKSE::log::info("[BRIBE_RECRUIT] Generic NPC '{}' bribed. Recruiting the original actor directly.", a_actor->GetName());
+                    // Herhangi bir işlem yapmıyoruz, targetActor = a_actor olarak kalıyor!
+                }
+            }
+
+            EffectManager::GetSingleton()->PlayAcceptanceEffects(targetActor);
+            
+            targetActor->StopInteractingQuick(true);
+            targetActor->StopCombat();
+            targetActor->DrawWeaponMagicHands(false);
+
             if (processLists) {
-                processLists->StopCombatAndAlarmOnActor(a_actor, true);
+                processLists->StopCombatAndAlarmOnActor(targetActor, true);
             }
             
             NPCTrait trait = TraitManager::GetSingleton()->GetTrait(a_actor);
@@ -155,23 +228,23 @@ namespace Loyalty {
             int roll = dis(gen);
 
             // DYNAMIC BETRAYAL FOR BANDITS:
-            // Low bribe -> chance from settings (default 60%)
-            // High bribe -> chance from settings (default 15%)
             if (IsBanditLike(a_actor)) {
                 auto settings = Settings::GetSingleton();
                 int betrayalChance = a_isLowOffer ? settings->betrayalChanceLowBribe : settings->betrayalChanceHighBribe;
                 if (roll <= betrayalChance) {
-                    TraitManager::GetSingleton()->SetTrait(a_actor, NPCTrait::Treacherous);
+                    TraitManager::GetSingleton()->SetTrait(targetActor, NPCTrait::Treacherous);
                     trait = NPCTrait::Treacherous;
                     SKSE::log::info("[BRIBE] {} assigned TREACHEROUS trait (roll={}, chance={}%, offer={}).",
-                                     a_actor->GetName(), roll, betrayalChance, a_isLowOffer ? "LOW" : "HIGH");
+                                     targetActor->GetName(), roll, betrayalChance, a_isLowOffer ? "LOW" : "HIGH");
                 } else {
                     SKSE::log::info("[BRIBE] {} NOT treacherous (roll={}, chance={}%, offer={}).",
-                                     a_actor->GetName(), roll, betrayalChance, a_isLowOffer ? "LOW" : "HIGH");
+                                     targetActor->GetName(), roll, betrayalChance, a_isLowOffer ? "LOW" : "HIGH");
                 }
+            } else {
+                TraitManager::GetSingleton()->SetTrait(targetActor, trait);
             }
 
-            auto avOwner = a_actor->AsActorValueOwner();
+            auto avOwner = targetActor->AsActorValueOwner();
             if (avOwner) {
                 // Restore Health, Magicka, and Stamina to 100% (as if giving them a potion)
                 float maxHealth = avOwner->GetPermanentActorValue(RE::ActorValue::kHealth);
@@ -193,47 +266,42 @@ namespace Loyalty {
                 }
             }
 
-            auto player = RE::PlayerCharacter::GetSingleton();
             if (player) {
                 // Setup ally factions, relationships, and unaggressive AI securely
-                SetupAllyFactionsAndAI(a_actor, player);
+                SetupAllyFactionsAndAI(targetActor, player);
                 player->StopCombat();
             }
 
             SKSE::log::info("[BRIBE] {} joined as ally. Trait={}, FormID={:08X}",
-                a_actor->GetName(),
+                targetActor->GetName(),
                 static_cast<int>(trait),
-                a_actor->GetFormID());
+                targetActor->GetFormID());
             LogAllyStatus("Post-Bribe");
 
             // ÇATIŞMAYI SIFIRLA:
-            // Müttefik olan NPC ve çevresindeki aktörlerin savaşını durdur.
-            // NOT: EvaluatePackage çağrılmıyor — çağrılırsa AI tekrar saldırı paketi seçiyor.
             if (processLists) {
                 for (auto& handle : processLists->highActorHandles) {
                     auto nearby = handle.get();
                     if (nearby) {
                         nearby->StopCombat();
-                        if (nearby.get() != a_actor && player && nearby->IsHostileToActor(player)) {
-                            SetRelationshipRank(a_actor, nearby.get(), -3);
-                            SetRelationshipRank(nearby.get(), a_actor, -3);
+                        if (nearby.get() != targetActor && player && nearby->IsHostileToActor(player)) {
+                            SetRelationshipRank(targetActor, nearby.get(), -3);
+                            SetRelationshipRank(nearby.get(), targetActor, -3);
                         }
                     }
                 }
             }
 
-            // 2. Diğer aktif müttefiklerimiz (traitMap içindekiler) ile yeni katılan müttefik 
-            // arasındaki ilişkiyi de 3 (Ally / Müttefik) yaparak birbirleriyle savaşmalarını engelliyoruz.
-            // Bu sayede uzaktaki okçular veya farklı mesafedeki yoldaşlar asla gözden kaçmıyor!
+            // Diğer aktif müttefiklerimizle ilişki kur
             auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
             for (const auto& [otherFormID, otherTrait] : traitMap) {
-                if (otherFormID != a_actor->GetFormID()) {
+                if (otherFormID != targetActor->GetFormID()) {
                     auto otherForm = RE::TESForm::LookupByID(otherFormID);
                     if (otherForm) {
                         auto otherActor = otherForm->As<RE::Actor>();
                         if (otherActor && !otherActor->IsDead()) {
-                            SetRelationshipRank(a_actor, otherActor, 3); // 3 = Ally
-                            SetRelationshipRank(otherActor, a_actor, 3); // 3 = Ally
+                            SetRelationshipRank(targetActor, otherActor, 3); // 3 = Ally
+                            SetRelationshipRank(otherActor, targetActor, 3); // 3 = Ally
                             
                             otherActor->StopCombat(); // İlişki değiştikten sonra tekrar durdur
                             otherActor->EvaluatePackage(true, true); // AI paketlerini zorla yenile
@@ -243,21 +311,21 @@ namespace Loyalty {
             }
 
             // Silahı indir — EvaluatePackage yok (AI tekrar saldırı seçer)
-            a_actor->DrawWeaponMagicHands(false);
-            a_actor->StopCombat();
+            targetActor->DrawWeaponMagicHands(false);
+            targetActor->StopCombat();
 
             RE::DebugNotification("NPC is now your loyal teammate. (Healed!)");
             
             // Trigger Trait Behaviors
             switch (trait) {
                 case NPCTrait::Treacherous:
-                    HandleTreacherousBehavior(a_actor);
+                    HandleTreacherousBehavior(targetActor);
                     break;
                 case NPCTrait::Honorable:
-                    HandleHonorableBehavior(a_actor);
+                    HandleHonorableBehavior(targetActor);
                     break;
                 case NPCTrait::Greedy:
-                    HandleGreedyBehavior(a_actor);
+                    HandleGreedyBehavior(targetActor);
                     break;
                 default:
                     break;
