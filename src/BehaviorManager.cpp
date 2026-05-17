@@ -57,13 +57,23 @@ namespace Loyalty {
     }
 
     std::string GenerateRandomName(bool a_isMercenary) {
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+
+        // %3 şansla efsanevi Easter Egg ismi: "King Arif"
+        std::uniform_int_distribution<> easterDis(1, 100);
+        if (easterDis(gen) <= 3) {
+            return "King Arif";
+        }
+
         static const std::vector<std::string> firstNames = {
             "Bjorn", "Thorald", "Rurik", "Sigurd", "Valgard", "Freya", "Astrid", "Yrsa",
             "Hrogar", "Torvald", "Erik", "Gunther", "Karl", "Sven", "Olaf", "Marcus",
             "Lucan", "Quintus", "Decimus", "Tiberius", "Alistair", "Hadvar", "Aldis",
             "Jean", "Raymond", "Giraud", "Arvel", "Ragnar", "Skjold", "Einar", "Sigtryggr",
             "Ulfric", "Gunnar", "Rollo", "Leif", "Ingolf", "Harald", "Knut", "Ivar",
-            "Hilda", "Gerd", "Sigrid", "Ingrid", "Solveig", "Dagny", "Alfhild", "Borghild"
+            "Hilda", "Gerd", "Sigrid", "Ingrid", "Solveig", "Dagny", "Alfhild", "Borghild",
+            "Arif"
         };
 
         static const std::vector<std::string> titles = {
@@ -72,11 +82,10 @@ namespace Loyalty {
             "the Grim", "Shield-Wall", "One-Eye", "Swift-Arrow", "the Fierce",
             "Frost-Veins", "Wolf-Claw", "Beard-Splitter", "the Unbreakable", "Iron-Sides",
             "the Whisperer", "Silent-Step", "Bear-Skin", "Red-Hand", "the Cruel",
-            "Dusk-Walker", "Storm-Bringer", "Crow-Feather", "Gold-Chaser", "Steel-Heart"
+            "Dusk-Walker", "Storm-Bringer", "Crow-Feather", "Gold-Chaser", "Steel-Heart",
+            "the King"
         };
 
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
         std::uniform_int_distribution<> firstNameDis(0, firstNames.size() - 1);
         std::uniform_int_distribution<> titleDis(0, titles.size() - 1);
 
