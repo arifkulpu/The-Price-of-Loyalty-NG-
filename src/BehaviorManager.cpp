@@ -380,26 +380,36 @@ namespace Loyalty {
                     
                     RE::DebugNotification("I must remain here, but my hired mercenary will protect you!");
 
-                    // Spawn a clean generic mercenary based on a solid, non-leveled vanilla TESNPC base form
-                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> meleeTemplates = {
-                        { 0x00045BE0, MercenaryClass::kMelee },      // Whiterun Guard (Sword & Shield)
-                        { 0x00046794, MercenaryClass::kMelee },      // Imperial Soldier (Sword & Shield)
-                        { 0x00046EFD, MercenaryClass::kMelee }       // Stormcloak Soldier (Sword & Shield)
+                    // Define Low-tier (Apprentice) and High-tier (Veteran) solid vanilla templates
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowMelee = {
+                        { 0x00020DF4, MercenaryClass::kMelee },      // Imperial Recruit (level 4)
+                        { 0x00039CF7, MercenaryClass::kMelee }       // Bandit Melee (level 1-5)
+                    };
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highMelee = {
+                        { 0x00045BE0, MercenaryClass::kMelee },      // Whiterun Guard (level 20+)
+                        { 0x00046794, MercenaryClass::kMelee }       // Imperial Soldier (level 10+)
                     };
 
-                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> twoHandedTemplates = {
-                        { 0x00046EFE, MercenaryClass::kTwoHanded },   // Stormcloak Soldier (Two-Handed)
-                        { 0x00037C2E, MercenaryClass::kTwoHanded }    // Orc Bandit (Two-Handed)
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowTwoHanded = {
+                        { 0x00037C2E, MercenaryClass::kTwoHanded }   // Bandit Thug (level 5)
+                    };
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highTwoHanded = {
+                        { 0x00046EFE, MercenaryClass::kTwoHanded }   // Stormcloak Officer (level 10+)
                     };
 
-                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> archerTemplates = {
-                        { 0x0004622B, MercenaryClass::kArcher },      // Whiterun Guard Archer
-                        { 0x0004622A, MercenaryClass::kArcher }       // Imperial Archer
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowArcher = {
+                        { 0x0004622A, MercenaryClass::kArcher }      // Imperial Archer (level 4)
+                    };
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highArcher = {
+                        { 0x0004622B, MercenaryClass::kArcher }      // Whiterun Guard Archer (level 20+)
                     };
 
-                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> mageTemplates = {
-                        { 0x000B3291, MercenaryClass::kMage },        // Vigilant of Stendarr Mage
-                        { 0x00039CFB, MercenaryClass::kMage }         // Pyromancer Mage
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> lowMage = {
+                        { 0x00039CFA, MercenaryClass::kMage }        // Apprentice Necromancer (level 1)
+                    };
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> highMage = {
+                        { 0x000B3291, MercenaryClass::kMage },       // Vigilant of Stendarr Mage (level 12+)
+                        { 0x00039CFB, MercenaryClass::kMage }        // Pyromancer Mage (level 16+)
                     };
 
                     static std::random_device rd;
@@ -411,23 +421,27 @@ namespace Loyalty {
                     MercenaryClass selectedClass = MercenaryClass::kMelee;
 
                     if (rolledClass == 0) {
-                        std::uniform_int_distribution<> dis(0, meleeTemplates.size() - 1);
-                        auto pair = meleeTemplates[dis(gen)];
+                        const auto& list = a_isLowOffer ? lowMelee : highMelee;
+                        std::uniform_int_distribution<> dis(0, list.size() - 1);
+                        auto pair = list[dis(gen)];
                         selectedBaseID = pair.first;
                         selectedClass = pair.second;
                     } else if (rolledClass == 1) {
-                        std::uniform_int_distribution<> dis(0, twoHandedTemplates.size() - 1);
-                        auto pair = twoHandedTemplates[dis(gen)];
+                        const auto& list = a_isLowOffer ? lowTwoHanded : highTwoHanded;
+                        std::uniform_int_distribution<> dis(0, list.size() - 1);
+                        auto pair = list[dis(gen)];
                         selectedBaseID = pair.first;
                         selectedClass = pair.second;
                     } else if (rolledClass == 2) {
-                        std::uniform_int_distribution<> dis(0, archerTemplates.size() - 1);
-                        auto pair = archerTemplates[dis(gen)];
+                        const auto& list = a_isLowOffer ? lowArcher : highArcher;
+                        std::uniform_int_distribution<> dis(0, list.size() - 1);
+                        auto pair = list[dis(gen)];
                         selectedBaseID = pair.first;
                         selectedClass = pair.second;
                     } else {
-                        std::uniform_int_distribution<> dis(0, mageTemplates.size() - 1);
-                        auto pair = mageTemplates[dis(gen)];
+                        const auto& list = a_isLowOffer ? lowMage : highMage;
+                        std::uniform_int_distribution<> dis(0, list.size() - 1);
+                        auto pair = list[dis(gen)];
                         selectedBaseID = pair.first;
                         selectedClass = pair.second;
                     }
@@ -499,25 +513,30 @@ namespace Loyalty {
                 }
             }
 
-            // Seviyeyi rüşvet miktarına (düşük teklif / yüksek teklif) göre ayarla
+            // Seviyeyi rüşvet miktarına (düşük teklif / yüksek teklif) göre motor seviyesinde güvenli niteliklerle ayarla
             {
-                std::random_device rdLevel;
-                std::mt19937 genLevel(rdLevel());
-                int rolledLevel = 10;
-                if (a_isLowOffer) {
-                    // Düşük rüşvet: 1-10 lvl arası
-                    rolledLevel = std::uniform_int_distribution<>(1, 10)(genLevel);
-                } else {
-                    // Yüksek rüşvet: 10 ve oyuncu seviyesinin +5 üstü arası (en az 10)
-                    int playerLvl = player ? static_cast<int>(player->GetLevel()) : 10;
-                    int maxLevel = (playerLvl + 5 > 10) ? (playerLvl + 5) : 10;
-                    rolledLevel = std::uniform_int_distribution<>(10, maxLevel)(genLevel);
-                }
+                auto avOwner = targetActor->AsActorValueOwner();
+                if (avOwner) {
+                    float currentMaxHP = avOwner->GetPermanentActorValue(RE::ActorValue::kHealth);
+                    float currentMaxMagicka = avOwner->GetPermanentActorValue(RE::ActorValue::kMagicka);
+                    float currentMaxStamina = avOwner->GetPermanentActorValue(RE::ActorValue::kStamina);
 
-                std::string levelCmd = "SetLevel " + std::to_string(rolledLevel) + " 0 " + std::to_string(rolledLevel) + " " + std::to_string(rolledLevel);
-                ExecuteConsoleCommand(levelCmd, targetActor);
-                SKSE::log::info("[BRIBE_LEVEL] Set actor '{}' (FormID={:08X}) level to {} (LowOffer={})", 
-                    targetActor->GetName(), targetActor->GetFormID(), rolledLevel, a_isLowOffer);
+                    if (a_isLowOffer) {
+                        // Düşük rüşvet: Acemi nitelikleri (%25 Can ve Kondisyon azaltılır, motoru bozmaz)
+                        avOwner->SetBaseActorValue(RE::ActorValue::kHealth, (std::max)(currentMaxHP * 0.75f, 50.f));
+                        avOwner->SetBaseActorValue(RE::ActorValue::kMagicka, (std::max)(currentMaxMagicka * 0.75f, 50.f));
+                        avOwner->SetBaseActorValue(RE::ActorValue::kStamina, (std::max)(currentMaxStamina * 0.75f, 50.f));
+                        SKSE::log::info("[BRIBE_LEVEL] Scaled actor '{}' (FormID={:08X}) as Apprentice (HP={:.1f})", 
+                            targetActor->GetName(), targetActor->GetFormID(), (std::max)(currentMaxHP * 0.75f, 50.f));
+                    } else {
+                        // Yüksek rüşvet: Elit kıdemli nitelikleri (%35 Can ve Kondisyon artırılır)
+                        avOwner->SetBaseActorValue(RE::ActorValue::kHealth, currentMaxHP * 1.35f);
+                        avOwner->SetBaseActorValue(RE::ActorValue::kMagicka, currentMaxMagicka * 1.35f);
+                        avOwner->SetBaseActorValue(RE::ActorValue::kStamina, currentMaxStamina * 1.35f);
+                        SKSE::log::info("[BRIBE_LEVEL] Scaled actor '{}' (FormID={:08X}) as Veteran (HP={:.1f})", 
+                            targetActor->GetName(), targetActor->GetFormID(), currentMaxHP * 1.35f);
+                    }
+                }
             }
 
             EffectManager::GetSingleton()->PlayAcceptanceEffects(targetActor);
