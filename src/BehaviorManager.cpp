@@ -380,34 +380,26 @@ namespace Loyalty {
                     
                     RE::DebugNotification("I must remain here, but my hired mercenary will protect you!");
 
-                    // Spawn a clean generic mercenary based on a randomly selected combat archetype and race
+                    // Spawn a clean generic mercenary based on a solid, non-leveled vanilla TESNPC base form
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> meleeTemplates = {
-                        { 0x000A1A2E, MercenaryClass::kMelee },      // Nord/Imperial Melee
-                        { 0x000A1A2A, MercenaryClass::kMelee },      // Redguard Melee
-                        { 0x000A1A28, MercenaryClass::kMelee },      // Orc Melee
-                        { 0x00074A0F, MercenaryClass::kMelee },      // Khajiit Melee
-                        { 0x000A2C59, MercenaryClass::kMelee }       // Argonian Melee
+                        { 0x00045BE0, MercenaryClass::kMelee },      // Whiterun Guard (Sword & Shield)
+                        { 0x00046794, MercenaryClass::kMelee },      // Imperial Soldier (Sword & Shield)
+                        { 0x00046EFD, MercenaryClass::kMelee }       // Stormcloak Soldier (Sword & Shield)
                     };
 
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> twoHandedTemplates = {
-                        { 0x0007EB3A, MercenaryClass::kTwoHanded },   // Nord/Imperial Two-Handed
-                        { 0x000A2C5F, MercenaryClass::kTwoHanded },   // Orc Two-Handed
-                        { 0x000A2C5E, MercenaryClass::kTwoHanded },   // Redguard Two-Handed
-                        { 0x000A2C5C, MercenaryClass::kTwoHanded }    // Dunmer Two-Handed
+                        { 0x00046EFE, MercenaryClass::kTwoHanded },   // Stormcloak Soldier (Two-Handed)
+                        { 0x00037C2E, MercenaryClass::kTwoHanded }    // Orc Bandit (Two-Handed)
                     };
 
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> archerTemplates = {
-                        { 0x0007EB39, MercenaryClass::kArcher },      // Nord/Imperial Archer
-                        { 0x000A1A2B, MercenaryClass::kArcher },      // Bosmer Archer
-                        { 0x00074A10, MercenaryClass::kArcher },      // Khajiit Archer
-                        { 0x000A2C5A, MercenaryClass::kArcher }       // Argonian Archer
+                        { 0x0004622B, MercenaryClass::kArcher },      // Whiterun Guard Archer
+                        { 0x0004622A, MercenaryClass::kArcher }       // Imperial Archer
                     };
 
                     static const std::vector<std::pair<std::uint32_t, MercenaryClass>> mageTemplates = {
-                        { 0x00045BE1, MercenaryClass::kMage },        // Altmer/Imperial Mage
-                        { 0x000A1A29, MercenaryClass::kMage },        // Dunmer Mage
-                        { 0x000A2C58, MercenaryClass::kMage },        // Breton Mage
-                        { 0x000A2C5B, MercenaryClass::kMage }         // Argonian Mage
+                        { 0x000B3291, MercenaryClass::kMage },        // Vigilant of Stendarr Mage
+                        { 0x00039CFB, MercenaryClass::kMage }         // Pyromancer Mage
                     };
 
                     static std::random_device rd;
@@ -415,7 +407,7 @@ namespace Loyalty {
                     std::uniform_int_distribution<> classDis(0, 3);
                     int rolledClass = classDis(gen);
 
-                    std::uint32_t selectedBaseID = 0x000A1A2E;
+                    std::uint32_t selectedBaseID = 0x00045BE0;
                     MercenaryClass selectedClass = MercenaryClass::kMelee;
 
                     if (rolledClass == 0) {
@@ -440,19 +432,27 @@ namespace Loyalty {
                         selectedClass = pair.second;
                     }
 
-                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESBoundObject>(selectedBaseID);
+                    auto mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(selectedBaseID);
                     if (!mercenaryBase) {
-                        mercenaryBase = RE::TESForm::LookupByID<RE::TESBoundObject>(0x000A1A2E); // Fallback to Sword & Shield
+                        SKSE::log::error("[BRIBE_RECRUIT] Failed to lookup solid template {:08X}. Falling back to 00045BE0.", selectedBaseID);
+                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00045BE0); // Fallback to Whiterun Guard
                         selectedClass = MercenaryClass::kMelee;
                     }
 
                     if (mercenaryBase) {
-                        auto spawnedRef = player->PlaceObjectAtMe(mercenaryBase, false);
+                        SKSE::log::info("[BRIBE_RECRUIT] Spawning mercenary from template {:08X} ('{}')", mercenaryBase->GetFormID(), mercenaryBase->GetName());
+                        // Spawn relative to the NPC (a_actor) just like cloning, for maximum stability
+                        auto spawnedRef = a_actor->PlaceObjectAtMe(mercenaryBase, false);
                         auto spawnedActor = spawnedRef ? spawnedRef->As<RE::Actor>() : nullptr;
                         if (spawnedActor) {
                             targetActor = spawnedActor;
                             AssignRandomNameToActor(targetActor, selectedClass);
+                            SKSE::log::info("[BRIBE_RECRUIT] Successfully spawned mercenary '{}' (FormID={:08X})", targetActor->GetName(), targetActor->GetFormID());
+                        } else {
+                            SKSE::log::error("[BRIBE_RECRUIT] PlaceObjectAtMe failed to spawn actor for template {:08X}!", mercenaryBase->GetFormID());
                         }
+                    } else {
+                        SKSE::log::error("[BRIBE_RECRUIT] Fallback template 00045BE0 not found in database!");
                     }
 
                     // Orijinal satıcı/quest NPC'sini barışçıl duruma getirip dükkanına geri gönderiyoruz
