@@ -15,9 +15,15 @@
 #include <new>
 #include <utility>
 
+#include <unordered_map>
+
 // Debounce: prevent multiple simultaneous re-pacify tasks for the same actor
 static std::mutex g_pacifyMutex;
 static std::unordered_set<RE::FormID> g_beingPacified;
+
+// Map to track dismissed clones for cleanup: FormID -> Game Day of Dismissal
+static std::mutex g_cleanupMutex;
+static std::unordered_map<RE::FormID, float> g_dismissedClones;
 
 namespace Loyalty {
     // Helper to call engine's SetRelationshipRank (SSE: 36544, AE: 37544)
@@ -80,14 +86,16 @@ namespace Loyalty {
             "Gunther", "Karl", "Sven", "Olaf", "Marcus", "Lucan", "Quintus", "Decimus",
             "Tiberius", "Alistair", "Hadvar", "Aldis", "Jean", "Raymond", "Giraud", "Arvel",
             "Ragnar", "Skjold", "Einar", "Sigtryggr", "Ulfric", "Gunnar", "Rollo", "Leif",
-            "Ingolf", "Harald", "Knut", "Ivar", "Arif"
+            "Ingolf", "Harald", "Knut", "Ivar", "Arif",
+            "Tarkan", "Alp", "Baybars", "Mete", "Ertugrul", "Battal", "Polat", "Suleyman", "Cuneyt", "Bamsi"
         };
 
         static const std::vector<std::string> femaleNames = {
             "Freya", "Astrid", "Yrsa", "Hilda", "Gerd", "Sigrid", "Ingrid", "Solveig",
             "Dagny", "Alfhild", "Borghild", "Aela", "Mjoll", "Lydia", "Valeria", "Camilla",
             "Serana", "Karliah", "Ingun", "Delphine", "Elisif", "Irileth", "Senna", "Muiri",
-            "Sylgja", "Temba", "Vex", "Lisette", "Runa", "Lyra", "Ria", "Jordis", "Anska"
+            "Sylgja", "Temba", "Vex", "Lisette", "Runa", "Lyra", "Ria", "Jordis", "Anska",
+            "Tomris", "Asena", "Sabiha", "Nene", "Leyla", "Sirin", "Banu", "Malhun", "Ayse", "Fatma"
         };
 
         static const std::vector<std::string> meleeTitles = {
@@ -519,6 +527,14 @@ namespace Loyalty {
         // Bu aktörü takip listesinden tamamen çıkar
         traitMap.erase(a_actor->GetFormID());
 
+        // Eğer dinamik bir klonsa (FormID >= 0xFF000000), 1 gün sonra temizlenmek üzere kaydet
+        if (a_actor->GetFormID() >= 0xFF000000) {
+            std::lock_guard<std::mutex> lock(g_cleanupMutex);
+            float currentTime = RE::Calendar::GetSingleton() ? RE::Calendar::GetSingleton()->GetCurrentGameTime() : 0.0f;
+            g_dismissedClones[a_actor->GetFormID()] = currentTime;
+            SKSE::log::info("[CLEANUP] Registered dynamic clone '{}' (FormID={:08X}) for deletion in 1 in-game day.", a_actor->GetName(), a_actor->GetFormID());
+        }
+
         auto potentialFollowerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
         if (potentialFollowerFaction) {
             a_actor->RemoveFromFaction(potentialFollowerFaction);
@@ -652,6 +668,14 @@ namespace Loyalty {
                     }
                 }
                 traitMap.erase(safeActor->GetFormID());
+
+                // Eğer dinamik bir klonsa, ihanet sonrasında 1 gün sonra silinmek üzere kaydet
+                if (safeActor->GetFormID() >= 0xFF000000) {
+                    std::lock_guard<std::mutex> lock(g_cleanupMutex);
+                    float currentTime = RE::Calendar::GetSingleton() ? RE::Calendar::GetSingleton()->GetCurrentGameTime() : 0.0f;
+                    g_dismissedClones[safeActor->GetFormID()] = currentTime;
+                    SKSE::log::info("[CLEANUP] Treacherous dynamic clone '{}' (FormID={:08X}) registered for deletion in 1 in-game day.", safeActor->GetName(), safeActor->GetFormID());
+                }
 
                 // Factions: Add back to dunPlayerEnemyFaction so guards/modded followers attack them
                 auto enemyFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00017009);
@@ -811,6 +835,32 @@ namespace Loyalty {
                 // Ölen aktörleri takip listesinden tamamen sil
                 for (auto id : deadAllies) {
                     traitMap.erase(id);
+                }
+
+                // Dinamik Klonların Temizliği (1 oyun içi gün geçtikten sonra silme)
+                {
+                    std::lock_guard<std::mutex> lock(g_cleanupMutex);
+                    float currentTime = RE::Calendar::GetSingleton() ? RE::Calendar::GetSingleton()->GetCurrentGameTime() : 0.0f;
+                    
+                    std::vector<RE::FormID> toDelete;
+                    for (const auto& [cloneID, dismissTime] : g_dismissedClones) {
+                        // 1.0f oyun içi gün = 24 saat
+                        if (currentTime >= dismissTime + 1.0f) {
+                            toDelete.push_back(cloneID);
+                        }
+                    }
+
+                    for (auto cloneID : toDelete) {
+                        auto form = RE::TESForm::LookupByID(cloneID);
+                        auto actor = form ? form->As<RE::Actor>() : nullptr;
+                        if (actor) {
+                            SKSE::log::info("[CLEANUP] 1 in-game day passed. Disabling and deleting dynamic clone '{}' (FormID={:08X}).", actor->GetName(), cloneID);
+                            actor->StopCombat();
+                            actor->Disable();
+                            actor->SetDelete(true);
+                        }
+                        g_dismissedClones.erase(cloneID);
+                    }
                 }
             });
         }
