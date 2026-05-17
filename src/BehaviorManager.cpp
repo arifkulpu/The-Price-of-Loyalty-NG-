@@ -478,51 +478,64 @@ namespace Loyalty {
         auto player = RE::PlayerCharacter::GetSingleton();
         if (!player) return RE::BSEventNotifyControl::kContinue;
 
-        if (a_event->cell == player->GetParentCell()) {
-            SKSE::log::info("Player cell changed or fully loaded. Checking allies...");
+        // Herhangi bir hücre yüklendiğinde (han, zindan, kapı vb.), müttefik temizliğini bir kare sonra ana iş parçacığında çalıştır.
+        // Bu sayede oyun motorunun hücre geçişini tamamen bitirmesini bekleyip savaşı ve alarm durumlarını mükemmel şekilde sıfırlayabiliriz.
+        auto taskQueue = SKSE::GetTaskInterface();
+        if (taskQueue) {
+            taskQueue->AddTask([]() {
+                auto player = RE::PlayerCharacter::GetSingleton();
+                if (!player) return;
 
-            auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
-            std::vector<RE::FormID> deadAllies;
+                auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+                std::vector<RE::FormID> deadAllies;
 
-            for (const auto& [formID, trait] : traitMap) {
-                auto form = RE::TESForm::LookupByID(formID);
-                if (form) {
-                    auto actor = form->As<RE::Actor>();
-                    if (actor && actor != player) {
-                        if (actor->IsDead()) {
-                            deadAllies.push_back(formID);
-                            continue;
-                        }
-
-                        // Resetlenmiş durumları otomatik onar
-                        RestoreAllyStateIfReset(actor, player);
-
-                        auto& runtimeData = actor->GetActorRuntimeData();
-                        if (runtimeData.boolBits.any(RE::Actor::BOOL_BITS::kPlayerTeammate)) {
-                            // Savaş durumlarını ve silahlarını her hücre yüklenmesinde/ışınlanmasında HER ZAMAN sıfırla!
-                            auto processLists = RE::ProcessLists::GetSingleton();
-                            if (processLists) {
-                                processLists->StopCombatAndAlarmOnActor(actor, true);
+                for (const auto& [formID, trait] : traitMap) {
+                    auto form = RE::TESForm::LookupByID(formID);
+                    if (form) {
+                        auto actor = form->As<RE::Actor>();
+                        if (actor && actor != player) {
+                            if (actor->IsDead()) {
+                                deadAllies.push_back(formID);
+                                continue;
                             }
-                            actor->StopCombat();
-                            actor->DrawWeaponMagicHands(false);
 
-                            // Eğer farklı bir hücredelerse veya oyuncudan çok uzaktalarsa yanına ışınla
-                            if (actor->GetParentCell() != player->GetParentCell() || 
-                                actor->GetPosition().GetDistance(player->GetPosition()) > 4000.0f) {
-                                SKSE::log::info("Teleporting ally {} to player.", actor->GetName());
-                                actor->MoveTo(player);
+                            // Resetlenmiş durumları otomatik onar
+                            RestoreAllyStateIfReset(actor, player);
+
+                            auto& runtimeData = actor->GetActorRuntimeData();
+                            if (runtimeData.boolBits.any(RE::Actor::BOOL_BITS::kPlayerTeammate)) {
+                                // Savaş durumlarını ve silahlarını her yüklemeden sonra kesin olarak sıfırla!
+                                auto processLists = RE::ProcessLists::GetSingleton();
+                                if (processLists) {
+                                    processLists->StopCombatAndAlarmOnActor(actor, true);
+                                }
+                                actor->StopCombat();
+                                actor->DrawWeaponMagicHands(false);
+
+                                // Eğer farklı bir hücredelerse veya oyuncudan çok uzaktalarsa yanına ışınla
+                                if (actor->GetParentCell() != player->GetParentCell() || 
+                                    actor->GetPosition().GetDistance(player->GetPosition()) > 4000.0f) {
+                                    SKSE::log::info("Teleporting ally {} to player on cell load task.", actor->GetName());
+                                    actor->MoveTo(player);
+
+                                    // Işınlandıktan sonra savaşı ve alarmı tekrar sıfırla
+                                    if (processLists) {
+                                        processLists->StopCombatAndAlarmOnActor(actor, true);
+                                    }
+                                    actor->StopCombat();
+                                    actor->DrawWeaponMagicHands(false);
+                                }
+                                actor->EvaluatePackage(true, true);
                             }
-                            actor->EvaluatePackage(true, true);
                         }
                     }
                 }
-            }
 
-            // Ölen aktörleri takip listesinden tamamen sil
-            for (auto id : deadAllies) {
-                traitMap.erase(id);
-            }
+                // Ölen aktörleri takip listesinden tamamen sil
+                for (auto id : deadAllies) {
+                    traitMap.erase(id);
+                }
+            });
         }
 
         return RE::BSEventNotifyControl::kContinue;
