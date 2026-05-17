@@ -244,6 +244,12 @@ namespace Loyalty {
                 TraitManager::GetSingleton()->SetTrait(targetActor, trait);
             }
 
+            // Eğer orijinal aktör kimlik değişimi/koruma yüzünden değiştirilmişse,
+            // orijinal aktörün FormID'sini TraitMap'ten siliyoruz ki çökme ve ışınlanma yapmasın!
+            if (targetActor != a_actor) {
+                TraitManager::GetSingleton()->GetTraitMap().erase(a_actor->GetFormID());
+            }
+
             auto avOwner = targetActor->AsActorValueOwner();
             if (avOwner) {
                 // Restore Health, Magicka, and Stamina to 100% (as if giving them a potion)
@@ -540,8 +546,8 @@ namespace Loyalty {
     void RestoreAllyStateIfReset(RE::Actor* a_actor, RE::PlayerCharacter* a_player) {
         if (!a_actor || !a_player) return;
 
-        // Ölen aktörleri asla onarma!
-        if (a_actor->IsDead()) {
+        // Silinmiş, devre dışı bırakılmış veya ölen aktörleri asla onarma!
+        if (a_actor->IsDeleted() || a_actor->IsDisabled() || a_actor->IsDead()) {
             return;
         }
 
@@ -570,7 +576,7 @@ namespace Loyalty {
             if (form) {
                 auto actor = form->As<RE::Actor>();
                 if (actor && actor != player) {
-                    if (actor->IsDead()) {
+                    if (actor->IsDeleted() || actor->IsDisabled() || actor->IsDead()) {
                         deadAllies.push_back(formID);
                         continue;
                     }
@@ -626,7 +632,7 @@ namespace Loyalty {
                     if (form) {
                         auto actor = form->As<RE::Actor>();
                         if (actor && actor != player) {
-                            if (actor->IsDead()) {
+                            if (actor->IsDeleted() || actor->IsDisabled() || actor->IsDead()) {
                                 deadAllies.push_back(formID);
                                 continue;
                             }
