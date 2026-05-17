@@ -44,6 +44,17 @@ namespace Loyalty {
         }
     }
 
+    // Helper to programmatically execute console command using engine's Script class
+    void ExecuteConsoleCommand(std::string_view a_command, RE::TESObjectREFR* a_target = nullptr) {
+        auto factory = RE::IFormFactory::GetFormFactoryByType(RE::FormType::Script);
+        auto script = factory ? factory->Create()->As<RE::Script>() : nullptr;
+        if (script) {
+            script->SetCommand(a_command);
+            script->CompileAndRun(a_target);
+            delete script;
+        }
+    }
+
     bool IsBanditLike(RE::Actor* a_actor) {
         if (!a_actor) return false;
 
@@ -277,29 +288,70 @@ namespace Loyalty {
                     
                     RE::DebugNotification("I must remain here, but my hired mercenary will protect you!");
 
-                    // Spawn a clean generic mercenary based on a randomly selected combat archetype
-                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> mercenaryTemplates = {
-                        { 0x000A1A2E, MercenaryClass::kMelee },      // Savaşçı (Tek El + Kalkan)
-                        { 0x0007EB3A, MercenaryClass::kTwoHanded },   // Çift El Silah Kullanan (Two-Handed)
-                        { 0x0007EB39, MercenaryClass::kArcher },      // Okçu (Ranger / Archer)
-                        { 0x00045BE1, MercenaryClass::kMage }         // Büyücü (Battlemage / Mage)
+                    // Spawn a clean generic mercenary based on a randomly selected combat archetype and race
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> meleeTemplates = {
+                        { 0x000A1A2E, MercenaryClass::kMelee },      // Nord/Imperial Melee
+                        { 0x000A1A2A, MercenaryClass::kMelee },      // Redguard Melee
+                        { 0x000A1A28, MercenaryClass::kMelee },      // Orc Melee
+                        { 0x00074A0F, MercenaryClass::kMelee },      // Khajiit Melee
+                        { 0x000A2C59, MercenaryClass::kMelee }       // Argonian Melee
+                    };
+
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> twoHandedTemplates = {
+                        { 0x0007EB3A, MercenaryClass::kTwoHanded },   // Nord/Imperial Two-Handed
+                        { 0x000A2C5F, MercenaryClass::kTwoHanded },   // Orc Two-Handed
+                        { 0x000A2C5E, MercenaryClass::kTwoHanded },   // Redguard Two-Handed
+                        { 0x000A2C5C, MercenaryClass::kTwoHanded }    // Dunmer Two-Handed
+                    };
+
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> archerTemplates = {
+                        { 0x0007EB39, MercenaryClass::kArcher },      // Nord/Imperial Archer
+                        { 0x000A1A2B, MercenaryClass::kArcher },      // Bosmer Archer
+                        { 0x00074A10, MercenaryClass::kArcher },      // Khajiit Archer
+                        { 0x000A2C5A, MercenaryClass::kArcher }       // Argonian Archer
+                    };
+
+                    static const std::vector<std::pair<std::uint32_t, MercenaryClass>> mageTemplates = {
+                        { 0x00045BE1, MercenaryClass::kMage },        // Altmer/Imperial Mage
+                        { 0x000A1A29, MercenaryClass::kMage },        // Dunmer Mage
+                        { 0x000A2C58, MercenaryClass::kMage },        // Breton Mage
+                        { 0x000A2C5B, MercenaryClass::kMage }         // Argonian Mage
                     };
 
                     static std::random_device rd;
                     static std::mt19937 gen(rd());
-                    std::uniform_int_distribution<> classDis(0, mercenaryTemplates.size() - 1);
-                    auto selectedPair = mercenaryTemplates[classDis(gen)];
-                    std::uint32_t selectedBaseID = selectedPair.first;
-                    MercenaryClass selectedClass = selectedPair.second;
+                    std::uniform_int_distribution<> classDis(0, 3);
+                    int rolledClass = classDis(gen);
+
+                    std::uint32_t selectedBaseID = 0x000A1A2E;
+                    MercenaryClass selectedClass = MercenaryClass::kMelee;
+
+                    if (rolledClass == 0) {
+                        std::uniform_int_distribution<> dis(0, meleeTemplates.size() - 1);
+                        auto pair = meleeTemplates[dis(gen)];
+                        selectedBaseID = pair.first;
+                        selectedClass = pair.second;
+                    } else if (rolledClass == 1) {
+                        std::uniform_int_distribution<> dis(0, twoHandedTemplates.size() - 1);
+                        auto pair = twoHandedTemplates[dis(gen)];
+                        selectedBaseID = pair.first;
+                        selectedClass = pair.second;
+                    } else if (rolledClass == 2) {
+                        std::uniform_int_distribution<> dis(0, archerTemplates.size() - 1);
+                        auto pair = archerTemplates[dis(gen)];
+                        selectedBaseID = pair.first;
+                        selectedClass = pair.second;
+                    } else {
+                        std::uniform_int_distribution<> dis(0, mageTemplates.size() - 1);
+                        auto pair = mageTemplates[dis(gen)];
+                        selectedBaseID = pair.first;
+                        selectedClass = pair.second;
+                    }
 
                     auto mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(selectedBaseID);
                     if (!mercenaryBase) {
                         mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x000A1A2E); // Fallback to Sword & Shield
                         selectedClass = MercenaryClass::kMelee;
-                    }
-                    if (!mercenaryBase) {
-                        mercenaryBase = RE::TESForm::LookupByID<RE::TESNPC>(0x00045BE0); // Fallback 2
-                        selectedClass = MercenaryClass::kArcher;
                     }
 
                     if (mercenaryBase) {
@@ -353,6 +405,27 @@ namespace Loyalty {
                         AssignRandomNameToActor(targetActor, MercenaryClass::kGeneric);
                     }
                 }
+            }
+
+            // Seviyeyi rüşvet miktarına (düşük teklif / yüksek teklif) göre ayarla
+            {
+                std::random_device rdLevel;
+                std::mt19937 genLevel(rdLevel());
+                int rolledLevel = 10;
+                if (a_isLowOffer) {
+                    // Düşük rüşvet: 1-10 lvl arası
+                    rolledLevel = std::uniform_int_distribution<>(1, 10)(genLevel);
+                } else {
+                    // Yüksek rüşvet: 10 ve oyuncu seviyesinin +5 üstü arası (en az 10)
+                    int playerLvl = player ? static_cast<int>(player->GetLevel()) : 10;
+                    int maxLevel = (playerLvl + 5 > 10) ? (playerLvl + 5) : 10;
+                    rolledLevel = std::uniform_int_distribution<>(10, maxLevel)(genLevel);
+                }
+
+                std::string levelCmd = "SetLevel " + std::to_string(rolledLevel) + " 0 " + std::to_string(rolledLevel) + " " + std::to_string(rolledLevel);
+                ExecuteConsoleCommand(levelCmd, targetActor);
+                SKSE::log::info("[BRIBE_LEVEL] Set actor '{}' (FormID={:08X}) level to {} (LowOffer={})", 
+                    targetActor->GetName(), targetActor->GetFormID(), rolledLevel, a_isLowOffer);
             }
 
             EffectManager::GetSingleton()->PlayAcceptanceEffects(targetActor);
