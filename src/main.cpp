@@ -17,7 +17,8 @@ namespace Loyalty {
         auto eventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton();
         if (eventSourceHolder) {
             eventSourceHolder->AddEventSink<RE::TESCellFullyLoadedEvent>(BehaviorManager::GetSingleton());
-            SKSE::log::info("Cell fully loaded event sink registered.");
+            eventSourceHolder->AddEventSink<RE::TESCombatEvent>(BehaviorManager::GetSingleton());
+            SKSE::log::info("Event sinks registered (CellFullyLoaded + Combat).");
         }
 
         SKSE::log::info("The Price of Loyalty Initialized.");
@@ -46,7 +47,6 @@ extern "C" [[maybe_unused]] __declspec(dllexport) bool SKSEPlugin_Query(SKSE::Qu
     pluginInfo->version = static_cast<std::uint32_t>(SKSEPlugin_Version.GetVersion().pack());
     return true;
 }
-
 extern "C" [[maybe_unused]] __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* a_skse)
 {
     SKSE::Init(a_skse);

@@ -9,6 +9,12 @@
 #include <random>
 #include <thread>
 #include <chrono>
+#include <mutex>
+#include <unordered_set>
+
+// Debounce: prevent multiple simultaneous re-pacify tasks for the same actor
+static std::mutex g_pacifyMutex;
+static std::unordered_set<RE::FormID> g_beingPacified;
 
 namespace Loyalty {
     // Helper to call engine's SetRelationshipRank (SSE: 36544, AE: 37544)
@@ -77,6 +83,17 @@ namespace Loyalty {
         }
 
         // 3. Düşman Faction'ları temizle
+        // A) Aktörün kendi özel/zindan faction'larını temizle (eski arkadaşlarına yardım etmemesi için)
+        auto baseNPC = a_actor->GetActorBase();
+        if (baseNPC) {
+            for (auto& factionRank : baseNPC->factions) {
+                if (factionRank.faction) {
+                    a_actor->RemoveFromFaction(factionRank.faction);
+                }
+            }
+        }
+
+        // B) Sabit (dinamik eklenebilecek) genel düşman faction'larını da garanti olsun diye temizle
         static const std::vector<RE::FormID> hostileFactionIDs = {
             0x0001B0E4, // BanditFaction
             0x000E0CDA, // dunBanditFaction
@@ -112,6 +129,7 @@ namespace Loyalty {
             avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 4.0f); // Foolhardy
             avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 2.0f);  // Helps friends & allies
             avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
+            avOwner->SetBaseActorValue(RE::ActorValue::kMorality, 0.0f); // Any Crime
         }
     }
 
@@ -144,9 +162,12 @@ namespace Loyalty {
                 int betrayalChance = a_isLowOffer ? settings->betrayalChanceLowBribe : settings->betrayalChanceHighBribe;
                 if (roll <= betrayalChance) {
                     TraitManager::GetSingleton()->SetTrait(a_actor, NPCTrait::Treacherous);
-                    trait = NPCTrait::Treacherous; // Update local variable for the switch below
-                    SKSE::log::info("Bandit-like NPC {} decided to betray because of {} bribe (Chance: {}%).", 
-                                     a_actor->GetName(), a_isLowOffer ? "LOW" : "HIGH", betrayalChance);
+                    trait = NPCTrait::Treacherous;
+                    SKSE::log::info("[BRIBE] {} assigned TREACHEROUS trait (roll={}, chance={}%, offer={}).",
+                                     a_actor->GetName(), roll, betrayalChance, a_isLowOffer ? "LOW" : "HIGH");
+                } else {
+                    SKSE::log::info("[BRIBE] {} NOT treacherous (roll={}, chance={}%, offer={}).",
+                                     a_actor->GetName(), roll, betrayalChance, a_isLowOffer ? "LOW" : "HIGH");
                 }
             }
 
@@ -176,17 +197,27 @@ namespace Loyalty {
             if (player) {
                 // Setup ally factions, relationships, and unaggressive AI securely
                 SetupAllyFactionsAndAI(a_actor, player);
-                player->StopCombat(); // Oyuncunun hedefini temizle
+                player->StopCombat();
             }
 
-            // ÇATIŞMAYI SIFIRLA VE TAKIM ARKADAŞI İLİŞKİLERİNİ GÜNCELLE:
-            // 1. Çevredeki TÜM aktörlerin savaş durumunu durduruyoruz.
+            SKSE::log::info("[BRIBE] {} joined as ally. Trait={}, FormID={:08X}",
+                a_actor->GetName(),
+                static_cast<int>(trait),
+                a_actor->GetFormID());
+            LogAllyStatus("Post-Bribe");
+
+            // ÇATIŞMAYI SIFIRLA:
+            // Müttefik olan NPC ve çevresindeki aktörlerin savaşını durdur.
+            // NOT: EvaluatePackage çağrılmıyor — çağrılırsa AI tekrar saldırı paketi seçiyor.
             if (processLists) {
                 for (auto& handle : processLists->highActorHandles) {
-                    auto actor = handle.get();
-                    if (actor) {
-                        actor->StopCombat();
-                        actor->EvaluatePackage(true, true);
+                    auto nearby = handle.get();
+                    if (nearby) {
+                        nearby->StopCombat();
+                        if (nearby.get() != a_actor && player && nearby->IsHostileToActor(player)) {
+                            SetRelationshipRank(a_actor, nearby.get(), -3);
+                            SetRelationshipRank(nearby.get(), a_actor, -3);
+                        }
                     }
                 }
             }
@@ -211,11 +242,9 @@ namespace Loyalty {
                 }
             }
 
-            // Animasyon Bug'ını Düzelt: Animated Armoury gibi modlar özel animasyonlar kullandığı için
-            // standart WeapUnequip bazen yetersiz kalabiliyor. Engine'in kendi fonksiyonunu kullanalım.
+            // Silahı indir — EvaluatePackage yok (AI tekrar saldırı seçer)
             a_actor->DrawWeaponMagicHands(false);
-            a_actor->StopCombat(); // İlişkiler değiştikten sonra ana aktörün savaşını ve hedeflerini tekrar durdur
-            a_actor->EvaluatePackage(true, true); // AI paketlerini ve müttefik ilişkilerini zorla yenile
+            a_actor->StopCombat();
 
             RE::DebugNotification("NPC is now your loyal teammate. (Healed!)");
             
@@ -261,6 +290,24 @@ namespace Loyalty {
         if (player) {
             SetRelationshipRank(a_actor, player, -3); // -3 = Düşman
         }
+
+        // Diğer aktif müttefiklerle olan ilişkileri düşmana çevir
+        auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+        for (const auto& [otherFormID, otherTrait] : traitMap) {
+            if (otherFormID != a_actor->GetFormID()) {
+                auto otherForm = RE::TESForm::LookupByID(otherFormID);
+                if (otherForm) {
+                    auto otherActor = otherForm->As<RE::Actor>();
+                    if (otherActor && !otherActor->IsDead()) {
+                        SetRelationshipRank(a_actor, otherActor, -3); // -3 = Enemy
+                        SetRelationshipRank(otherActor, a_actor, -3); // -3 = Enemy
+                    }
+                }
+            }
+        }
+        
+        // Bu aktörü takip listesinden tamamen çıkar
+        traitMap.erase(a_actor->GetFormID());
 
         auto potentialFollowerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84D);
         if (potentialFollowerFaction) {
@@ -315,7 +362,9 @@ namespace Loyalty {
     }
 
     void BehaviorManager::HandleTreacherousBehavior(RE::Actor* a_actor) {
-        SKSE::log::info("Treacherous NPC {} will betray in 5-10 seconds.", a_actor->GetName());
+        auto settings = Settings::GetSingleton();
+        SKSE::log::info("Treacherous NPC {} (FormID={:08X}) will betray in {}-{} seconds.", 
+            a_actor->GetName(), a_actor->GetFormID(), settings->betrayalMinTime, settings->betrayalMaxTime);
 
         // Oyuncuya uyarı: "Bir şeyler yanlış hissettiriyor..."
         RE::DebugNotification("Something feels off about this one...");
@@ -324,7 +373,6 @@ namespace Loyalty {
         RE::ActorHandle actorHandle = a_actor->GetHandle();
 
         // Ayarları al
-        auto settings = Settings::GetSingleton();
         int minDelay = settings->betrayalMinTime * 1000;
         int maxDelay = settings->betrayalMaxTime * 1000;
 
@@ -375,6 +423,22 @@ namespace Loyalty {
 
                 // Düşman ilişki seviyesine ayarla
                 SetRelationshipRank(safeActor, player, -4);
+
+                // Diğer müttefiklerle de düşman yap
+                auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+                for (const auto& [otherFormID, otherTrait] : traitMap) {
+                    if (otherFormID != safeActor->GetFormID()) {
+                        auto otherForm = RE::TESForm::LookupByID(otherFormID);
+                        if (otherForm) {
+                            auto otherActor = otherForm->As<RE::Actor>();
+                            if (otherActor && !otherActor->IsDead()) {
+                                SetRelationshipRank(safeActor, otherActor, -4); // Enemy
+                                SetRelationshipRank(otherActor, safeActor, -4); // Enemy
+                            }
+                        }
+                    }
+                }
+                traitMap.erase(safeActor->GetFormID());
 
                 // Factions: Add back to dunPlayerEnemyFaction so guards/modded followers attack them
                 auto enemyFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x00017009);
@@ -539,5 +603,172 @@ namespace Loyalty {
         }
 
         return RE::BSEventNotifyControl::kContinue;
+    }
+
+    // -----------------------------------------------------------------------
+    // TESCombatEvent: Log whenever an actor in our traitMap enters/exits combat
+    // -----------------------------------------------------------------------
+    RE::BSEventNotifyControl BehaviorManager::ProcessEvent(
+        const RE::TESCombatEvent* a_event,
+        RE::BSTEventSource<RE::TESCombatEvent>*)
+    {
+        if (!a_event) return RE::BSEventNotifyControl::kContinue;
+
+        // TESCombatEvent fields are NiPointer<TESObjectREFR> — cast to Actor*
+        RE::Actor* actor  = a_event->actor       ? a_event->actor->As<RE::Actor>()       : nullptr;
+        RE::Actor* target = a_event->targetActor ? a_event->targetActor->As<RE::Actor>() : nullptr;
+        if (!actor) return RE::BSEventNotifyControl::kContinue;
+
+        auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+        bool actorIsAlly  = traitMap.contains(actor->GetFormID());
+        bool targetIsAlly = target && traitMap.contains(target->GetFormID());
+
+        auto player = RE::PlayerCharacter::GetSingleton();
+        bool targetIsPlayer = target && player && (target == player);
+
+        // Only log if our mod has a stake in this event
+        if (!actorIsAlly && !targetIsAlly) return RE::BSEventNotifyControl::kContinue;
+
+        const char* state = "UNKNOWN";
+        switch (a_event->newState.get()) {
+            case RE::ACTOR_COMBAT_STATE::kNone:       state = "STOPPED";    break;
+            case RE::ACTOR_COMBAT_STATE::kCombat:     state = "IN_COMBAT";  break;
+            case RE::ACTOR_COMBAT_STATE::kSearching:  state = "SEARCHING";  break;
+        }
+
+        auto avOwner = actor->AsActorValueOwner();
+        float aggression = avOwner ? avOwner->GetBaseActorValue(RE::ActorValue::kAggression) : -1.f;
+        bool  hasTeammate = actor->GetActorRuntimeData().boolBits.any(RE::Actor::BOOL_BITS::kPlayerTeammate);
+        bool  isHostileToPlayer = player && actor->IsHostileToActor(player);
+
+        SKSE::log::info(
+            "[COMBAT_EVENT] Actor='{}' (FormID={:08X}, Ally={}, Teammate={}, Aggr={:.1f}, HostileToPlayer={}) "
+            "-> state={}, Target='{}'{}",
+            actor->GetName(),
+            actor->GetFormID(),
+            actorIsAlly,
+            hasTeammate,
+            aggression,
+            isHostileToPlayer,
+            state,
+            target ? target->GetName() : "(none)",
+            targetIsPlayer ? " [[[TARGET IS PLAYER]]]" : ""
+        );
+
+        // Müttefikimiz oyuncuya veya başka bir müttefike saldırıyorsa debounce ile müdahale et
+        if (actorIsAlly && (targetIsPlayer || targetIsAlly) &&
+            a_event->newState.get() == RE::ACTOR_COMBAT_STATE::kCombat) {
+
+            NPCTrait currentTrait = traitMap.count(actor->GetFormID()) ? traitMap.at(actor->GetFormID()) : NPCTrait::None;
+
+            SKSE::log::warn(
+                "[COMBAT_EVENT] !!! ALLY '{}' ATTACKING PLAYER OR ALLY! Trait={}, Teammate={}, Aggr={:.1f}. RE-PACIFYING...",
+                actor->GetName(), static_cast<int>(currentTrait), hasTeammate, aggression
+            );
+
+            // Treacherous ise — ihanet bekleniyor, müdahale etme
+            if (currentTrait == NPCTrait::Treacherous) {
+                SKSE::log::info("[COMBAT_EVENT] Treacherous trait — intended betrayal, skipping.");
+                return RE::BSEventNotifyControl::kContinue;
+            }
+
+            // Debounce: bu aktör zaten işleniyorsa yeni task kuyruğa alma
+            RE::FormID actorID = actor->GetFormID();
+            {
+                std::lock_guard<std::mutex> lock(g_pacifyMutex);
+                if (g_beingPacified.count(actorID)) {
+                    return RE::BSEventNotifyControl::kContinue; // Zaten işleniyor
+                }
+                g_beingPacified.insert(actorID);
+            }
+
+            RE::ActorHandle actorHandle = actor->GetHandle();
+            SKSE::GetTaskInterface()->AddTask([actorHandle, actorID, player]() {
+                // Debounce'u serbest bırak
+                auto cleanup = [&actorID]() {
+                    std::lock_guard<std::mutex> lock(g_pacifyMutex);
+                    g_beingPacified.erase(actorID);
+                };
+
+                auto actorPtr = actorHandle.get();
+                if (!actorPtr || actorPtr->IsDead()) { cleanup(); return; }
+                RE::Actor* safeActor = actorPtr.get();
+
+                SKSE::log::info("[RE-PACIFY] Applying to '{}'...", safeActor->GetName());
+
+                // 1. Sadece aktörün kendi savaşını durdur — player->StopCombat() yok
+                //    (player->StopCombat() motoru tekrar tetikleyerek döngü yaratıyor)
+                auto processLists = RE::ProcessLists::GetSingleton();
+                if (processLists) {
+                    processLists->StopCombatAndAlarmOnActor(safeActor, true);
+                }
+                safeActor->StopInteractingQuick(true);
+                safeActor->StopCombat();
+
+                // 2. Faction + ilişki + AI değerlerini tekrar uygula
+                SetupAllyFactionsAndAI(safeActor, player);
+
+                // 2B. Diğer tüm aktif müttefiklerle olan ilişkileri müttefik (3) olarak pekiştir
+                auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+                for (const auto& [otherFormID, otherTrait] : traitMap) {
+                    if (otherFormID != safeActor->GetFormID()) {
+                        auto otherForm = RE::TESForm::LookupByID(otherFormID);
+                        if (otherForm) {
+                            auto otherActor = otherForm->As<RE::Actor>();
+                            if (otherActor && !otherActor->IsDead()) {
+                                SetRelationshipRank(safeActor, otherActor, 3);
+                                SetRelationshipRank(otherActor, safeActor, 3);
+                                otherActor->StopCombat();
+                            }
+                        }
+                    }
+                }
+
+                // 3. Silahı indir — EvaluatePackage yok
+                safeActor->DrawWeaponMagicHands(false);
+
+                SKSE::log::info("[RE-PACIFY] '{}' done. Releasing debounce.", safeActor->GetName());
+                cleanup();
+            });
+        }
+
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+
+    // -----------------------------------------------------------------------
+    // LogAllyStatus: Snapshot of all tracked allies — useful for debugging
+    // -----------------------------------------------------------------------
+    void BehaviorManager::LogAllyStatus(const char* a_context) {
+        auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+        auto player = RE::PlayerCharacter::GetSingleton();
+
+        SKSE::log::info("[ALLY_STATUS @ {}] {} tracked actor(s):", a_context, traitMap.size());
+        for (const auto& [formID, trait] : traitMap) {
+            auto form = RE::TESForm::LookupByID(formID);
+            auto actor = form ? form->As<RE::Actor>() : nullptr;
+            if (!actor) {
+                SKSE::log::info("  - FormID={:08X} -> Actor not found (dead/unloaded).", formID);
+                continue;
+            }
+
+            auto avOwner = actor->AsActorValueOwner();
+            float aggr   = avOwner ? avOwner->GetBaseActorValue(RE::ActorValue::kAggression) : -1.f;
+            float assist = avOwner ? avOwner->GetBaseActorValue(RE::ActorValue::kAssistance)  : -1.f;
+            float moral  = avOwner ? avOwner->GetBaseActorValue(RE::ActorValue::kMorality)    : -1.f;
+            bool  tm     = actor->GetActorRuntimeData().boolBits.any(RE::Actor::BOOL_BITS::kPlayerTeammate);
+            bool  hostile = player && actor->IsHostileToActor(player);
+            bool  dead    = actor->IsDead();
+
+            auto currentFollowerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84E);
+            bool hasFaction = currentFollowerFaction && actor->IsInFaction(currentFollowerFaction);
+
+            SKSE::log::info(
+                "  - '{}' (FormID={:08X}, Trait={}, Dead={}, Teammate={}, FollowerFaction={}, "
+                "HostileToPlayer={}, Aggr={:.1f}, Assist={:.1f}, Moral={:.1f})",
+                actor->GetName(), formID, static_cast<int>(trait),
+                dead, tm, hasFaction, hostile, aggr, assist, moral
+            );
+        }
     }
 }
