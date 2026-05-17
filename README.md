@@ -36,11 +36,11 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
 *   **Animation Sync:** NPCs will immediately stop sandbox activities (sitting, leaning) upon being bribed to follow you.
 
 ### 4. Immersive Combat Classes & Gender-Aware Names
-*   **Diverse Combat Classes (Method 2 Spawns):** When bribing unique/quest/merchant NPCs who must remain at their posts, the spawned substitute bodyguard is no longer a generic warrior. They will dynamically and randomly spawn as one of four distinct scaled combat archetypes:
-    *   **Melee Guardian:** Heavy armor protector wielding a one-handed sword and a shield (Tank).
-    *   **Two-Handed Berserker:** Heavy armor warrior wielding a massive battleaxe or greatsword (DPS).
-    *   **Agile Archer:** Swift light-armor marksman wielding bows and daggers (Ranger).
-    *   **Destruction Battlemage:** Resilient spellcaster hurling fireballs, ice storms, and lightning bolts (Mage).
+*   **Diverse Combat Classes & Playable Races (Method 2 Spawns):** When bribing unique/quest/merchant NPCs who must remain at their posts, the spawned substitute bodyguard is no longer a generic warrior. They will dynamically spawn across **all of Skyrim's playable races** (including Nords, Imperials, Redguards, Orcs, Bosmer, Dunmer, Altmer, Bretons, Argonians, and Khajiits) as one of four distinct scaled combat archetypes:
+    *   **Melee Guardian:** Heavy armor protector wielding a one-handed sword and a shield (Tank) [Spawns as Nord, Imperial, Redguard, Orc, Khajiit, or Argonian].
+    *   **Two-Handed Berserker:** Heavy armor warrior wielding a massive battleaxe or greatsword (DPS) [Spawns as Nord, Imperial, Orc, Redguard, or Dunmer].
+    *   **Agile Archer:** Swift light-armor marksman wielding bows and daggers (Ranger) [Spawns as Nord, Imperial, Bosmer, Khajiit, or Argonian].
+    *   **Destruction Battlemage:** Resilient spellcaster hurling fireballs, ice storms, and lightning bolts (Mage) [Spawns as Altmer, Dunmer, Breton, or Argonian].
 *   **Gender-Aware Dynamic Naming (2,200+ Combinations):** Spawning allies or bribing generic hostiles automatically triggers a background gender detection routine (`GetSex()`). The NPC is assigned a lore-friendly first name—including legendary Norse, Imperial, and heroic Turkish names (e.g., Tarkan, Tomris, Mete, Ertugrul, Asena)—and a class-tailored roleplay title (e.g., *"the Spell-Weaver"* for mages, *"Bone-Breaker"* for two-handed warriors, *"Shield-Wall"* for tanks, *"Swift-Arrow"* for archers).
 *   **1-Day Dynamic Clone Garbage Collector:** Clones spawned via identity swap or substitution bodyguards do not persist in the world indefinitely once dismissed or when they betray you. The SKSE engine automatically schedules them for total deletion from the game database exactly 1 in-game day (24 hours) after their departure, keeping your savegame clean and memory usage extremely lightweight.
 *   **Legendary Easter Egg Names (3% Chance):** There is a rare 3% chance that any newly recruited mercenary or generic NPC will spawn as a legendary mythical figure:
@@ -122,11 +122,11 @@ bEnableBackstab=1
 *   **Animasyon Senkronizasyonu:** Rüşvet verdiğiniz an NPC yaptığı işi (oturma, yaslanma) anında bırakır ve takibe başlar.
 
 ### 4. Çeşitlendirilmiş Sınıflar ve Cinsiyete Duyarlı Dinamik İsimler
-*   **Çeşitlendirilmiş Sınıf Sistemi (Yöntem 2 Muhafızları):** Görev yerlerini bırakamayan esnaf veya quest NPC'lerine rüşvet verdiğinizde yerlerine gelen yedek muhafızlar artık tekdüze savaşçılar değildir. Her çağrıda 4 farklı gelişmiş savaş sınıfından biri olarak rastgele spawn olurlar:
-    *   **Kalkanlı Muhafız (Melee Guardian):** Tek el silah ve kalkan taşıyan ağır zırhlı koruyucu (Tank).
-    *   **Çift Edim Savaşçısı (Two-Handed Berserker):** Devasa baltalar veya büyük kılıçlar sallayan ağır zırhlı savaşçı (DPS).
-    *   **Keskin Nişancı Okçu (Agile Archer):** Yay kullanan ve hızlı hançerler taşıyan hafif zırhlı nişancı (Okçu).
-    *   **Yıkım Savaş Büyücüsü (Destruction Battlemage):** Alev fırtınaları ve yıldırımlar saçan dirençli büyücü (Savaş Büyücüsü).
+*   **Çeşitlendirilmiş Sınıf ve Tüm Oynanabilir Irklar (Yöntem 2 Muhafızları):** Görev yerlerini bırakamayan esnaf veya quest NPC'lerine rüşvet verdiğinizde yerlerine gelen yedek muhafızlar artık tekdüze savaşçılar değildir. Oyundaki **tüm oynanabilir ırklardan (Nord, Imperial, Redguard, Orc, Bosmer, Dunmer, Altmer, Breton, Argonian ve Khajiit)** rastgele ve dinamik olarak 4 farklı gelişmiş savaş sınıfından biriyle spawn olurlar:
+    *   **Kalkanlı Muhafız (Melee Guardian):** Tek el silah ve kalkan taşıyan ağır zırhlı koruyucu (Tank) [Nord, Imperial, Redguard, Orc, Khajiit veya Argonian olarak spawn olabilir].
+    *   **Çift Edim Savaşçısı (Two-Handed Berserker):** Devasa baltalar veya büyük kılıçlar sallayan ağır zırhlı savaşçı (DPS) [Nord, Imperial, Orc, Redguard veya Dunmer olarak spawn olabilir].
+    *   **Keskin Nişancı Okçu (Agile Archer):** Yay kullanan ve hızlı hançerler taşıyan hafif zırhlı nişancı (Okçu) [Nord, Imperial, Bosmer, Khajiit veya Argonian olarak spawn olabilir].
+    *   **Yıkım Savaş Büyücüsü (Destruction Battlemage):** Alev fırtınaları ve yıldırımlar saçan dirençli büyücü (Savaş Büyücüsü) [Altmer, Dunmer, Breton veya Argonian olarak spawn olabilir].
 *   **Cinsiyete Duyarlı Dinamik İsimlendirme (2.200+ Kombinasyon):** Bir klon çağrıldığında veya sıradan bir düşmana rüşvet verildiğinde sistem arka planda karakterin cinsiyetini tespit eder (`base->GetSex()`). Cinsiyetine tamamen uyumlu lore-friendly ön adlar—erkekler için efsanevi İskandinav, İmparatorluk adlarının yanı sıra kahramanlık dolu **Türkçe adlar (Tarkan, Mete, Ertuğrul, Alp vb.)**, kadınlar için ise **(Tomris, Asena, Sabiha, Nene vb.)** gibi tarihi/mitolojik adlar—ile **kendi savaş sınıfıyla mükemmel uyumlu ünvanlar** (Büyücüler için *"the Spell-Weaver"*, Çift El kullananlar için *"Bone-Breaker"*, Okçular için *"Swift-Arrow"*, Kalkanlılar için *"Shield-Wall"*) birleştirilerek dinamik olarak atanır.
 *   **1 Günlük Otomatik Klon Temizliği (Garbage Collector):** Kimlik değişimiyle veya yedek muhafız olarak çağrılan klonlar, yollarınızı ayırdığınızda (kovduğunuzda) veya size ihanet ettiklerinde oyunda sonsuza dek kalıp gereksiz kalabalık ve savegame yükü oluşturmazlar. SKSE altyapısı, azat edildikten tam 1 oyun içi gün (24 saat) sonra bu klonları oyundan tamamen siler (Disable & SetDelete), böylece kayıt dosyanız her zaman hafif ve tertemiz kalır.
 *   **Efsanevi Easter Egg İsimleri (%3 Şans):** Yeni çağrılan her muhafızın veya rüşvet alan sıradan haydutun %3 efsanevi ihtimalle kurucunun şerefine özel bir unvan alma şansı vardır:
