@@ -120,6 +120,16 @@ namespace Loyalty {
         
         auto msgBox = new RE::MessageBoxData();
         if (msgBox) {
+            msgBox->unk08 = 0;
+            msgBox->pad0A = 0;
+            msgBox->pad0C = 0;
+            msgBox->menuDepth = 3;
+            msgBox->optionIndexOffset = 0;
+            msgBox->useHtml = false;
+            msgBox->verticalButtons = false;
+            msgBox->cancelOptionIndex = -1;
+            msgBox->isCancellable = false;
+
             msgBox->callback = cb;
             msgBox->bodyText = bodyText.c_str();
             msgBox->type = 1;
@@ -205,6 +215,14 @@ namespace Loyalty {
         
         auto msgBox = new RE::MessageBoxData();
         if (msgBox) {
+            msgBox->unk08 = 0;
+            msgBox->pad0A = 0;
+            msgBox->pad0C = 0;
+            msgBox->menuDepth = 3;
+            msgBox->optionIndexOffset = 0;
+            msgBox->useHtml = false;
+            msgBox->verticalButtons = false;
+
             msgBox->callback = cb;
             msgBox->bodyText = bodyText.c_str();
             msgBox->type = 1;
