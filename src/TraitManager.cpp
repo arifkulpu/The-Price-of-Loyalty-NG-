@@ -11,7 +11,53 @@ namespace Loyalty {
             return it->second;
         }
 
-        return AssignRandomTrait(a_actor);
+        return NPCTrait::None; // Not in map = not bribed yet, return None
+    }
+
+    // PeekTrait: returns a stable trait for cost/UI purposes WITHOUT adding to traitMap.
+    // Uses a separate preview cache keyed by FormID.
+    NPCTrait TraitManager::PeekTrait(RE::Actor* a_actor) {
+        if (!a_actor) return NPCTrait::None;
+
+        // Check real map first
+        auto it = _traitMap.find(a_actor->GetFormID());
+        if (it != _traitMap.end()) {
+            return it->second;
+        }
+
+        // Check preview cache
+        auto prev = _previewMap.find(a_actor->GetFormID());
+        if (prev != _previewMap.end()) {
+            return prev->second;
+        }
+
+        // Generate and cache in preview map (not traitMap)
+        NPCTrait trait = GenerateRandomTrait(a_actor);
+        _previewMap[a_actor->GetFormID()] = trait;
+        return trait;
+    }
+
+    // GetOrAssignTrait: called only on successful bribe. Moves from preview to real map.
+    NPCTrait TraitManager::GetOrAssignTrait(RE::Actor* a_actor) {
+        if (!a_actor) return NPCTrait::None;
+
+        auto it = _traitMap.find(a_actor->GetFormID());
+        if (it != _traitMap.end()) {
+            return it->second;
+        }
+
+        // Promote from preview map if available, else generate fresh
+        auto prev = _previewMap.find(a_actor->GetFormID());
+        NPCTrait trait;
+        if (prev != _previewMap.end()) {
+            trait = prev->second;
+            _previewMap.erase(prev);
+        } else {
+            trait = GenerateRandomTrait(a_actor);
+        }
+
+        _traitMap[a_actor->GetFormID()] = trait;
+        return trait;
     }
 
     void TraitManager::SetTrait(RE::Actor* a_actor, NPCTrait a_trait) {
@@ -20,7 +66,7 @@ namespace Loyalty {
         }
     }
 
-    NPCTrait TraitManager::AssignRandomTrait(RE::Actor* a_actor) {
+    NPCTrait TraitManager::GenerateRandomTrait(RE::Actor* a_actor) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
         
@@ -42,10 +88,7 @@ namespace Loyalty {
         }
 
         std::uniform_int_distribution<> dis(1, canBeTreacherous ? 3 : 2);
-
-        NPCTrait trait = static_cast<NPCTrait>(dis(gen));
-        SetTrait(a_actor, trait);
-        return trait;
+        return static_cast<NPCTrait>(dis(gen));
     }
 
     float TraitManager::CalculateBribeCost(RE::Actor* a_actor) {
@@ -65,11 +108,11 @@ namespace Loyalty {
             baseCost *= 0.5f; // Bandits are cheap
         }
 
-        // Adjust by Trait
-        NPCTrait trait = GetTrait(a_actor);
+        // Adjust by Trait — use PeekTrait (NO traitMap write!)
+        NPCTrait trait = PeekTrait(a_actor);
         switch (trait) {
-            case NPCTrait::Greedy: baseCost *= 0.7f; break;
-            case NPCTrait::Honorable: baseCost *= 2.0f; break;
+            case NPCTrait::Greedy:      baseCost *= 0.7f; break;
+            case NPCTrait::Honorable:   baseCost *= 2.0f; break;
             case NPCTrait::Treacherous: baseCost *= 0.9f; break;
             default: break;
         }

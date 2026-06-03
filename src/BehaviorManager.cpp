@@ -556,7 +556,7 @@ namespace Loyalty {
                 processLists->StopCombatAndAlarmOnActor(targetActor, true);
             }
             
-            NPCTrait trait = TraitManager::GetSingleton()->GetTrait(a_actor);
+            NPCTrait trait = TraitManager::GetSingleton()->GetOrAssignTrait(a_actor);
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> dis(1, 100);

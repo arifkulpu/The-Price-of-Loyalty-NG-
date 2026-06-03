@@ -20,6 +20,8 @@ namespace Loyalty {
         }
 
         NPCTrait GetTrait(RE::Actor* a_actor);
+        NPCTrait PeekTrait(RE::Actor* a_actor);          // For cost calc — no traitMap write
+        NPCTrait GetOrAssignTrait(RE::Actor* a_actor);   // For successful bribe — writes to traitMap
         void SetTrait(RE::Actor* a_actor, NPCTrait a_trait);
 
         float CalculateBribeCost(RE::Actor* a_actor);
@@ -31,7 +33,9 @@ namespace Loyalty {
     private:
         TraitManager() = default;
         std::map<RE::FormID, NPCTrait> _traitMap;
+        std::map<RE::FormID, NPCTrait> _previewMap; // Temporary cache, not saved
 
-        NPCTrait AssignRandomTrait(RE::Actor* a_actor);
+        NPCTrait GenerateRandomTrait(RE::Actor* a_actor); // Pure random, no map write
+        NPCTrait AssignRandomTrait(RE::Actor* a_actor);   // Legacy, kept for compatibility
     };
 }
