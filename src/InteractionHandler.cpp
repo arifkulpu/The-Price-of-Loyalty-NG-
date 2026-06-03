@@ -103,8 +103,13 @@ namespace Loyalty {
             auto target = targetHandle.get().get();
             if (!target) return;
 
+            SKSE::log::info("[DISMISS_MENU_CALLBACK] Run triggered. Msg={}, Target='{}'", static_cast<int>(a_msg), target->GetName());
+
             if (a_msg == Message::kUnk0) {
+                SKSE::log::info("[DISMISS_MENU_CALLBACK] Player chose to Dismiss '{}'.", target->GetName());
                 BehaviorManager::GetSingleton()->DismissAlly(target);
+            } else {
+                SKSE::log::info("[DISMISS_MENU_CALLBACK] Player cancelled or chose to keep '{}'.", target->GetName());
             }
         }
     };
@@ -157,10 +162,15 @@ namespace Loyalty {
             auto target = targetHandle.get().get();
             if (!player || !target) return;
 
+            SKSE::log::info("[BRIBE_MENU_CALLBACK] Run triggered. Msg={}, Target='{}'", static_cast<int>(a_msg), target->GetName());
+
             float choiceAmount = 0;
             if (a_msg == Message::kUnk0) choiceAmount = amountLow;
             else if (a_msg == Message::kUnk1) choiceAmount = amountHigh;
-            else return;
+            else {
+                SKSE::log::info("[BRIBE_MENU_CALLBACK] Player cancelled or chose invalid option. Exiting callback.");
+                return;
+            }
 
             auto goldForm = RE::TESForm::LookupByID<RE::TESBoundObject>(0x0000000F);
             int32_t currentGold = 0;
@@ -170,6 +180,7 @@ namespace Loyalty {
 
             if (currentGold < static_cast<std::int32_t>(choiceAmount)) {
                 RE::DebugNotification("Not enough gold!");
+                SKSE::log::info("[BRIBE_MENU_CALLBACK] Not enough gold (Required={}, Current={}).", choiceAmount, currentGold);
                 return;
             }
 
