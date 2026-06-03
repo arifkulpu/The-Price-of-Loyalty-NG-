@@ -15,10 +15,10 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
     *   **Honorable:** Harder to bribe, requires more gold, but extremely loyal.
     *   **Greedy:** Loves gold, easy to bribe, but might ask for more later.
     *   **Treacherous:** Cheap to bribe, but **will betray you after a configurable delay (default 1-5 minutes)** — you'll get a warning before the attack.
+        *   *Lawless Restriction:* This trait can only be assigned to bandit-like actors (Bandits, Forsworn, Warlocks, Vampires). Regular law-abiding NPCs (Guards, Citizens, Imperial/Stormcloak Soldiers, Merchants) are completely immune to this trait and will never betray you (they will only roll Greedy or Honorable).
     *   **Dynamic Bandit Betrayal:** Bandit-like NPCs (Bandits, Forsworn, etc.) now have a chance to become Treacherous based on your bribe:
         *   **Low Bribe:** **60%** chance of betrayal.
         *   **High Bribe:** **15%** chance of betrayal.
-        *   *Non-hostile NPCs (Guards, Civilians) are not affected by this dynamic risk.*
 *   **Special Classes (Guards):** Guards have specialized pricing and loyalty checks. Bribing a lawman is expensive but grants high-tier combat support.
 *   **Speech Skill Influence:** The higher your Speech skill, the cheaper it is to bribe. At Speech 100, the required gold is reduced by **50%**. Invest in persuasion for maximum gold efficiency.
 *   **Bribe Success Probability & Safe Bribery:** Success is not guaranteed. The chance depends on your offer. However, **your gold is only deducted if the bribe attempt succeeds.** If the NPC rejects the offer, you keep your gold!
@@ -105,10 +105,10 @@ bEnableBackstab=1
     *   **Onurlu (Honorable):** Rüşvet vermesi zordur, daha fazla altın ister ama sonuna kadar sadıktır.
     *   **Açgözlü (Greedy):** Altını sever, kolay rüşvet alır ama ileride daha fazlasını isteyebilir.
     *   **Hain (Treacherous):** Ucuza rüşvet kabul eder ancak **ayarlanabilir bir süre sonra (varsayılan 1-5 dakika) sizi satar** — saldırıdan önce bir uyarı mesajı alırsınız.
+        *   *Kanunsuz Kısıtlaması:* Bu özellik yalnızca haydut tipi karakterlere (Haydutlar, Yeminliler, Kara Büyücüler, Vampirler) atanabilir. Kanunlara uyan normal NPC'ler (Muhafızlar, Vatandaşlar, İmparatorluk/Fırtınapelerin Askerleri, Esnaflar) bu özellikten tamamen muaftır ve size asla ihanet etmezler (yalnızca Açgözlü veya Onurlu olabilirler).
     *   **Dinamik Haydut İhaneti:** Haydut tipi NPC'ler (Haydutlar, Yeminliler vb.) rüşvet miktarına göre Hainleşebilirler:
         *   **Düşük Rüşvet:** **%60** ihanet olasılığı.
         *   **Yüksek Rüşvet:** **%15** ihanet olasılığı.
-        *   *Muhafızlar ve siviller bu dinamik riskten etkilenmezler.*
 *   **Özel Sınıflar (Muhafızlar):** Şehir muhafızları özel fiyatlandırmaya ve sadakat kontrollerine sahiptir. Bir kanun adamını satın almak pahalıdır ancak güçlü savaş desteği sağlar.
 *   **Konuşma Becerisi (Speech) Etkisi:** Konuşma beceriniz ne kadar yüksekse rüşvet vermek o kadar ucuza mal olur. Speech **100'de** gereken altın miktarı **%50 azalır**. Dil döndürmeyi bilen karakterler her zaman avantajlıdır.
 *   **Rüşvet Başarı Olasılığı & Güvenli Rüşvet:** Rüşvet vermek artık garanti değildir. Başarı şansı teklifinize bağlıdır. Ancak **altınınız sadece rüşvet başarıyla kabul edildiğinde envanterinizden eksilir.** Eğer teklifiniz reddedilirse altın cebinizde kalır!
