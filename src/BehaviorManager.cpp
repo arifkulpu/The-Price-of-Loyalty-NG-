@@ -25,6 +25,10 @@ static std::unordered_set<RE::FormID> g_beingPacified;
 static std::mutex g_cleanupMutex;
 static std::unordered_map<RE::FormID, float> g_dismissedClones;
 
+// Blacklist: actors we explicitly dismissed — blocks RE-PACIFY and RestoreAllyState from re-adding them
+static std::mutex g_dismissedMutex;
+static std::unordered_set<RE::FormID> g_dismissedActors;
+
 namespace Loyalty {
     // Helper to call engine's SetRelationshipRank (SSE: 36544, AE: 37544)
     void SetRelationshipRank(RE::Actor* a_actor, RE::Actor* a_target, std::int32_t a_rank) {
@@ -676,6 +680,16 @@ namespace Loyalty {
     void BehaviorManager::DismissAlly(RE::Actor* a_actor) {
         if (!a_actor) return;
 
+        // CRITICAL: Add to dismissed blacklist FIRST so RE-PACIFY and RestoreAllyState
+        // cannot race-condition re-add this actor before we finish cleanup.
+        {
+            std::lock_guard<std::mutex> lock(g_dismissedMutex);
+            g_dismissedActors.insert(a_actor->GetFormID());
+        }
+
+        // CRITICAL: Remove from traitMap immediately so no further ally logic applies.
+        TraitManager::GetSingleton()->GetTraitMap().erase(a_actor->GetFormID());
+
         auto& runtimeData = a_actor->GetActorRuntimeData();
         runtimeData.boolBits.reset(RE::Actor::BOOL_BITS::kPlayerTeammate);
         runtimeData.boolFlags.reset(RE::Actor::BOOL_FLAGS::kIsCommandedActor);
@@ -697,22 +711,23 @@ namespace Loyalty {
         }
 
         // Diğer aktif müttefiklerle olan ilişkileri düşmana çevir
-        auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
-        for (const auto& [otherFormID, otherTrait] : traitMap) {
-            if (otherFormID != a_actor->GetFormID()) {
-                auto otherForm = RE::TESForm::LookupByID(otherFormID);
-                if (otherForm) {
-                    auto otherActor = otherForm->As<RE::Actor>();
-                    if (otherActor && !otherActor->IsDead()) {
-                        SetRelationshipRank(a_actor, otherActor, -3); // -3 = Enemy
-                        SetRelationshipRank(otherActor, a_actor, -3); // -3 = Enemy
+        {
+            auto& traitMap = TraitManager::GetSingleton()->GetTraitMap();
+            for (const auto& [otherFormID, otherTrait] : traitMap) {
+                if (otherFormID != a_actor->GetFormID()) {
+                    auto otherForm = RE::TESForm::LookupByID(otherFormID);
+                    if (otherForm) {
+                        auto otherActor = otherForm->As<RE::Actor>();
+                        if (otherActor && !otherActor->IsDead()) {
+                            SetRelationshipRank(a_actor, otherActor, -3); // -3 = Enemy
+                            SetRelationshipRank(otherActor, a_actor, -3); // -3 = Enemy
+                        }
                     }
                 }
             }
+            // traitMap'ten tamamen çıkar (üstte de silindi ama döngüden önce kopyalandığı için tekrar)
+            traitMap.erase(a_actor->GetFormID());
         }
-        
-        // Bu aktörü takip listesinden tamamen çıkar
-        traitMap.erase(a_actor->GetFormID());
 
         // Eğer dinamik bir klonsa (FormID >= 0xFF000000), 1 gün sonra temizlenmek üzere kaydet
         if (a_actor->GetFormID() >= 0xFF000000) {
@@ -899,6 +914,15 @@ namespace Loyalty {
         // Silinmiş, devre dışı bırakılmış veya ölen aktörleri asla onarma!
         if (a_actor->IsDeleted() || a_actor->IsDisabled() || a_actor->IsDead()) {
             return;
+        }
+
+        // Kara listede olan (kovulmuş) aktörleri asla geri yükleme!
+        {
+            std::lock_guard<std::mutex> lock(g_dismissedMutex);
+            if (g_dismissedActors.count(a_actor->GetFormID())) {
+                SKSE::log::info("[RESTORE_BLOCKED] '{}' is in dismissed blacklist — skipping restore.", a_actor->GetName());
+                return;
+            }
         }
 
         auto& runtimeData = a_actor->GetActorRuntimeData();
@@ -1108,6 +1132,15 @@ namespace Loyalty {
         // Müttefikimiz oyuncuya veya başka bir müttefike saldırıyorsa debounce ile müdahale et
         if (actorIsAlly && (targetIsPlayer || targetIsAlly) &&
             a_event->newState.get() == RE::ACTOR_COMBAT_STATE::kCombat) {
+
+            // Kara listede olan (kovulmuş) aktörlere müdahale etme!
+            {
+                std::lock_guard<std::mutex> lock(g_dismissedMutex);
+                if (g_dismissedActors.count(actor->GetFormID())) {
+                    SKSE::log::info("[COMBAT_EVENT] '{}' is in dismissed blacklist — skipping RE-PACIFY.", actor->GetName());
+                    return RE::BSEventNotifyControl::kContinue;
+                }
+            }
 
             NPCTrait currentTrait = traitMap.count(actor->GetFormID()) ? traitMap.at(actor->GetFormID()) : NPCTrait::None;
 
