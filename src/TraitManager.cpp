@@ -23,7 +23,25 @@ namespace Loyalty {
     NPCTrait TraitManager::AssignRandomTrait(RE::Actor* a_actor) {
         static std::random_device rd;
         static std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(1, 3);
+        
+        bool canBeTreacherous = false;
+        if (a_actor) {
+            static const RE::FormID lawlessFactions[] = {
+                0x0001B0E4, // Bandit
+                0x00043599, // Forsworn
+                0x0003DF17, // Warlock
+                0x00027242  // Vampire
+            };
+            for (auto id : lawlessFactions) {
+                auto faction = RE::TESForm::LookupByID<RE::TESFaction>(id);
+                if (faction && a_actor->IsInFaction(faction)) {
+                    canBeTreacherous = true;
+                    break;
+                }
+            }
+        }
+
+        std::uniform_int_distribution<> dis(1, canBeTreacherous ? 3 : 2);
 
         NPCTrait trait = static_cast<NPCTrait>(dis(gen));
         SetTrait(a_actor, trait);
