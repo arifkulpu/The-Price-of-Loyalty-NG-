@@ -769,33 +769,59 @@ namespace Loyalty {
         a_actor->DrawWeaponMagicHands(false);
         a_actor->EvaluatePackage(true, true);
 
-        // Rastgele karar: Ya saldıracak ya da kaçacak
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(1, 100);
-        int roll = dis(gen);
+        bool isBandit = IsBanditLike(a_actor);
 
-        if (player) {
-            if (roll <= 50) {
-                // Saldır
-                StartCombat(a_actor, player);
-                std::string attackMsg = std::string(a_actor->GetName()) + " is not happy about being dismissed and attacks!";
-                RE::DebugNotification(attackMsg.c_str());
-            } else {
-                // Kaç
-                if (avOwner) {
-                    avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f); // Korkaklaştır
-                    avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f); // Korkaklaştır
+        if (isBandit) {
+            // Rastgele karar: Ya saldıracak ya da kaçacak (Haydutlar için)
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(1, 100);
+            int roll = dis(gen);
+
+            if (player) {
+                if (roll <= 50) {
+                    // Saldır
+                    StartCombat(a_actor, player);
+                    std::string attackMsg = std::string(a_actor->GetName()) + " is not happy about being dismissed and attacks!";
+                    RE::DebugNotification(attackMsg.c_str());
+                } else {
+                    // Kaç
+                    if (avOwner) {
+                        avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f); // Korkaklaştır
+                        avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f); // Korkaklaştır
+                    }
+                    a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
+                    a_actor->EvaluatePackage(true, true);
+                    std::string runMsg = std::string(a_actor->GetName()) + " decided to run for their life!";
+                    RE::DebugNotification(runMsg.c_str());
                 }
-                a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
-                a_actor->EvaluatePackage(true, true);
-                std::string runMsg = std::string(a_actor->GetName()) + " decided to run for their life!";
-                RE::DebugNotification(runMsg.c_str());
             }
-        }
 
-        std::string dismissMsg = std::string(a_actor->GetName()) + " has been dismissed.";
-        RE::DebugNotification(dismissMsg.c_str());
+            std::string dismissMsg = std::string(a_actor->GetName()) + " has been dismissed.";
+            RE::DebugNotification(dismissMsg.c_str());
+        } else {
+            // Normal Vatandaşlar, Korumalar ve Paralı Askerler için barışçıl sıfırlama
+            if (avOwner) {
+                // Varsayılan Skyrim motoru değerlerine geri döndür (Sakin ve Yardımsever/Normal)
+                if (a_actor->IsGuard()) {
+                    avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f); // Unaggressive
+                    avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 3.0f);  // Brave
+                    avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 1.0f);  // Helps Allies
+                } else {
+                    avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f); // Unaggressive
+                    avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 1.0f);  // Average
+                    avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 0.0f);  // Helps Nobody
+                }
+            }
+
+            if (player) {
+                // İlişki durumunu düşman yerine Nötr (0) yapıyoruz ki saldırmasınlar
+                SetRelationshipRank(a_actor, player, 0);
+            }
+
+            std::string peaceDismissMsg = std::string(a_actor->GetName()) + " leaves peacefully and returns to their duties.";
+            RE::DebugNotification(peaceDismissMsg.c_str());
+        }
     }
 
     void BehaviorManager::HandleTreacherousBehavior(RE::Actor* a_actor) {
