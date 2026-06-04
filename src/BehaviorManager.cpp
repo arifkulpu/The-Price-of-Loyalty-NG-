@@ -59,7 +59,7 @@ namespace Loyalty {
         }
     }
 
-    bool IsMerchantOrServiceNPC(RE::Actor* a_actor) {
+    bool BehaviorManager::IsMerchantOrServiceNPC(RE::Actor* a_actor) {
         if (!a_actor) return false;
 
         // 1. Check engine-level Vendor Keyword (0x00096637 = ActorTypeVendor)

@@ -18,6 +18,7 @@ namespace Loyalty {
         static void DismissAlly(RE::Actor* a_actor);
         static void CallAllies();
         static void LogAllyStatus(const char* a_context);
+        static bool IsMerchantOrServiceNPC(RE::Actor* a_actor);
 
         RE::BSEventNotifyControl ProcessEvent(const RE::TESCellFullyLoadedEvent* a_event, RE::BSTEventSource<RE::TESCellFullyLoadedEvent>* a_eventSource) override;
         RE::BSEventNotifyControl ProcessEvent(const RE::TESCombatEvent* a_event, RE::BSTEventSource<RE::TESCombatEvent>* a_eventSource) override;

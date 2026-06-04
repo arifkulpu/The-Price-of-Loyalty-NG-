@@ -66,8 +66,10 @@ namespace Loyalty {
 
                 auto baseNPC = targetActor->GetActorBase();
                 bool isUnique = baseNPC && baseNPC->IsUnique();
+                bool isMerchant = BehaviorManager::IsMerchantOrServiceNPC(targetActor);
 
-                if (isUnique) {
+                // Exclude unique NPCs from bribery unless they are merchants/service NPCs
+                if (isUnique && !isMerchant) {
                     RE::DebugNotification("This unique individual is too honorable to accept bribes.");
                     return;
                 }
