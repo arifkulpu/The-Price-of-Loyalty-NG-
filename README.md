@@ -19,6 +19,8 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
     *   **Dynamic Bandit Betrayal:** Bandit-like NPCs (Bandits, Forsworn, etc.) now have a chance to become Treacherous based on your bribe:
         *   **Low Bribe:** **60%** chance of betrayal.
         *   **High Bribe:** **15%** chance of betrayal.
+*   **Unique NPC Protections:** Unique NPCs (quest-givers, townsfolk) are too honorable to accept bribes and cannot be recruited (a message plays: *"This unique individual is too honorable to accept bribes."*).
+    *   *Merchant Exception:* Unique merchants, blacksmiths, and service providers (like Belethor, Adrienne Avenicci, and even essential traders like **Ri'saad**) are exempt from this restriction and can be bribed to spawn a substitute mercenary bodyguard.
 *   **Special Classes (Guards):** Guards have specialized pricing and loyalty checks. Bribing a lawman is expensive but grants high-tier combat support.
 *   **Speech Skill Influence:** The higher your Speech skill, the cheaper it is to bribe. At Speech 100, the required gold is reduced by **50%**. Invest in persuasion for maximum gold efficiency.
 *   **Bribe Success Probability & Safe Bribery:** Success is not guaranteed. The chance depends on your offer. However, **your gold is only deducted if the bribe attempt succeeds.** If the NPC rejects the offer, you keep your gold!
@@ -52,6 +54,7 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
     *   **Male Recruits:** Named **"King Arif"** directly.
     *   **Female Recruits:** Named **"Queen Arif"** directly.
 *   **Personalized Dismissal Notifications:** When parting ways with your allies, notifications and message boxes print their actual custom display names (e.g., *"Camilla Swift-Arrow has been dismissed."* or *"Bjorn Shield-Wall is not happy about being dismissed and attacks!"*). You'll always know exactly who you are dismissing.
+*   **Peaceful vs Hostile Dismissal:** Only bandit-like NPCs will turn hostile or flee when dismissed. Guards, citizens, and mercenaries will politely return to their duties with a peaceful notification (e.g. *"Lydia leaves peacefully and returns to their duties."*).
 
 ### 5. Advanced Engine Fixes & Quality of Life
 *   **Engine-Level Kalıcılık (kPersistent Flag):** Hired allies are marked as persistent at the game engine level (`kPersistent`). This prevents the engine's garbage collector from deleting or resetting them when you travel away, fast travel, or load new cells.
@@ -60,7 +63,6 @@ A comprehensive SKSE plugin for Skyrim Anniversary Edition (v1.6.1170) that intr
 *   **Persistent Relationship Map (Mutual Alliance):** Relationships between allies are managed via a persistent tracking map rather than an active-distance-list. This guarantees that far-away teammates (like archers or mages) are immediately registered as mutual allies of close-range fighters, completely eliminating combat confusion and friendly-fire mutinies.
 *   **Call Allies (Teleportation):** Pressing the **'B'** key while not targeting an NPC teleports all active, living bribed allies directly to your position.
 *   **Auto-Teleport on Transitions:** Whenever you fast travel, go through loading doors, or enter loaded areas, all your active hired allies automatically teleport to your side.
-*   **Hard Reset Dismissal:** Dismissing an NPC uses a "Hard Reset" to flush their AI state. They are removed from your factions and will **randomly either immediately become hostile to you again or flee for their lives** (especially if they were originally an enemy like a Bandit). The gold's influence is gone, and their reaction is unpredictable!
 *   **No "Moaning" Sounds:** Cleaned up actor flags to ensure bribed NPCs don't make reanimation/zombie sounds.
 
 ### 6. INI Configuration
@@ -109,6 +111,8 @@ bEnableBackstab=1
     *   **Dinamik Haydut İhaneti:** Haydut tipi NPC'ler (Haydutlar, Yeminliler vb.) rüşvet miktarına göre Hainleşebilirler:
         *   **Düşük Rüşvet:** **%60** ihanet olasılığı.
         *   **Yüksek Rüşvet:** **%15** ihanet olasılığı.
+*   **Benzersiz NPC Korumaları:** Hikayesel ve benzersiz (Unique) karakterler rüşvet kabul etmeyecek kadar onurludur (Sol üstte *"This unique individual is too honorable to accept bribes."* mesajı çıkar).
+    *   *Tüccar/Esnaf Muafiyeti:* Belethor, Adrienne Avenicci ve hatta ölümsüz olan **Ri'saad** gibi benzersiz tüccarlar bu engelden muaftır. Rüşvet aldıklarında dükkanlarında kalırlar ama yerlerine dövüşecek bir yedek paralı asker spawn ederler.
 *   **Özel Sınıflar (Muhafızlar):** Şehir muhafızları özel fiyatlandırmaya ve sadakat kontrollerine sahiptir. Bir kanun adamını satın almak pahalıdır ancak güçlü savaş desteği sağlar.
 *   **Konuşma Becerisi (Speech) Etkisi:** Konuşma beceriniz ne kadar yüksekse rüşvet vermek o kadar ucuza mal olur. Speech **100'de** gereken altın miktarı **%50 azalır**. Dil döndürmeyi bilen karakterler her zaman avantajlıdır.
 *   **Rüşvet Başarı Olasılığı & Güvenli Rüşvet:** Rüşvet vermek artık garanti değildir. Başarı şansı teklifinize bağlıdır. Ancak **altınınız sadece rüşvet başarıyla kabul edildiğinde envanterinizden eksilir.** Eğer teklifiniz reddedilirse altın cebinizde kalır!
@@ -143,6 +147,7 @@ bEnableBackstab=1
     *   **Erkek Yoldaşlar:** Doğrudan **"King Arif"** adını alır.
     *   **Kadın Yoldaşlar:** Doğrudan **"Queen Arif"** (Kraliçe Arif) adını alır.
 *   **Kişiselleştirilmiş Kovma Bildirimleri:** Yoldaşlarınızı azat ettiğinizde veya size saldırdıklarında ekranda çıkan bildirimlerde ve mesaj kutularında onların gerçek özel isimleri basılır (Örn: *"Camilla Swift-Arrow has been dismissed."* veya *"Bjorn Shield-Wall is not happy about being dismissed and attacks!"*). Kimi azat ettiğinizi her zaman tam olarak bilirsiniz.
+*   **Barışçıl veya Saldırgan Kovma:** Sadece haydut kökenli NPC'ler kovulduğunda saldırabilir veya kaçabilir. Korumalar, vatandaşlar ve paralı askerler kovulduklarında sakin bir şekilde görevlerine dönerler (Örn: *"Lydia leaves peacefully and returns to their duties."* bildirimi çıkar).
 
 ### 5. Gelişmiş Motor Düzeltmeleri ve Konfor Özellikleri
 *   **Motor Seviyesinde Kalıcılık (kPersistent Bayrağı):** Rüşvet verilen tüm haydutlar motor seviyesinde **persistent** olarak işaretlenir. Bu sayede siz uzaklaştığınızda veya hızlı seyahat ettiğinizde oyun motorunun çöp toplayıcısı tarafından silinmeleri veya sıfırlanmaları engellenir.
@@ -151,7 +156,6 @@ bEnableBackstab=1
 *   **Kalıcı Takip Haritası (Mesafe Bağımsız Müttefiklik):** Yoldaşların birbiriyle olan ilişkileri anlık çevre listesi yerine kalıcı takip haritası üzerinden güncellenir. Bu sayede savaştaki uzaktaki okçular veya büyücüler mesafe nedeniyle gözden kaçmaz; hepsi birbirini müttefik olarak tanır ve takım içi kavgalar/dost ateşi isyanları tamamen engellenir.
 *   **Müttefik Çağırma (Işınlanma):** Bir NPC'ye bakmıyorken **'B'** tuşuna basmak, o an hayatta olan tüm aktif müttefiklerinizi anında yanınıza ışınlar.
 *   **Otomatik Hücre & Geçiş Temizliği:** Hızlı seyahat (fast travel) yaptığınızda, han/mağara gibi yükleme ekranlı kapılardan geçtiğinizde veya hücre değiştiğinde (mesafe ne olursa olsun) müttefiklerinizin **savaş durumları ve alarmları motor seviyesinde otomatik olarak sıfırlanır, silahları kınına sokulur** ve gerekirse yanınıza ışınlanırlar. Böylece geçişlerde AI takılmaları veya sebepsiz anlık kavgalar tamamen önlenir.
-*   **Kesin Kovma (Hard Reset):** Bir NPC'yi azat ettiğinizde AI verileri sıfırlanır, takımınızdan atılır ve **rastgele bir şekilde ya anında size tekrar düşman olurlar ya da canlarını kurtarmak için kaçarlar** (eğer aslen bir haydutsalar). Verdiğiniz rüşvetin etkisi geçtiği an tepkileri tamamen tahmin edilemez hale gelir.
 *   **Ses Düzeltmesi:** NPC'lerin rüşvetten sonra "zombi" gibi inleme sesleri çıkarması engellenerek normal insan sesleri korunmuştur.
 
 ### 6. INI Ayarları
