@@ -64,6 +64,14 @@ namespace Loyalty {
                     return;
                 }
 
+                auto baseNPC = targetActor->GetActorBase();
+                bool isUnique = baseNPC && baseNPC->IsUnique();
+
+                if (isUnique) {
+                    RE::DebugNotification("This unique individual is too honorable to accept bribes.");
+                    return;
+                }
+
                 if (targetActor->IsEssential()) {
                     RE::DebugNotification("This individual cannot be bribed.");
                     return;
