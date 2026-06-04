@@ -556,7 +556,13 @@ namespace Loyalty {
                 processLists->StopCombatAndAlarmOnActor(targetActor, true);
             }
             
+            // If targetActor has changed due to Identity Swap (clone), we need to register the clone's FormID
+            // by using GetOrAssignTrait on a_actor (where preview trait was stored) but writing to targetActor (the new clone).
+            // Or easier: get the trait for a_actor, write it to targetActor, and erase a_actor.
             NPCTrait trait = TraitManager::GetSingleton()->GetOrAssignTrait(a_actor);
+            if (targetActor != a_actor) {
+                TraitManager::GetSingleton()->SetTrait(targetActor, trait);
+            }
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> dis(1, 100);
