@@ -193,24 +193,82 @@ namespace Loyalty {
             a_actor->GetName(), a_actor->GetFormID());
     }
 
-    bool IsBanditLike(RE::Actor* a_actor) {
+    // Returns true for any NPC that should turn hostile (attack/flee) when dismissed.
+    // Covers: bandits, undead (Draugr, skeletons), creatures (Falmer, spiders,
+    // Dwemer automatons, atronachs), and all other dungeon-hostile factions.
+    bool IsHostileType(RE::Actor* a_actor) {
         if (!a_actor) return false;
 
-        static const RE::FormID banditFactions[] = {
-            0x0001B0E4, // Bandit
-            0x00043599, // Forsworn
-            0x0003DF17, // Warlock
-            0x00027242  // Vampire
+        // 1. Keyword check — fastest path, covers all undead and creatures
+        //    ActorTypeUndead (0x000D205E): Draugr, skeletons, zombies, Dragon Priests
+        //    ActorTypeCreature (0x00084D66): Spiders, bears, wolves, Falmer, Chaurus etc.
+        //    ActorTypeDwarvenAutomaton (0x00060DEB): Dwemer spheres/spiders/centurions
+        static const RE::FormID hostileKeywords[] = {
+            0x000D205E, // ActorTypeUndead
+            0x00084D66, // ActorTypeCreature
+            0x00060DEB, // ActorTypeDwarvenAutomaton
         };
 
-        for (auto id : banditFactions) {
+        for (auto kwID : hostileKeywords) {
+            auto keyword = RE::TESForm::LookupByID<RE::BGSKeyword>(kwID);
+            if (keyword && a_actor->HasKeyword(keyword)) {
+                return true;
+            }
+        }
+
+        // 2. Faction check — covers humanoid hostile NPCs
+        static const RE::FormID hostileFactions[] = {
+            0x0001B0E4, // BanditFaction
+            0x00043599, // ForswornFaction
+            0x0003DF17, // WarlockFaction
+            0x00027242, // VampireFaction
+            0x0005830E, // NecromancerFaction
+            0x000F5993, // DraugrFaction
+            0x00107EEE, // FalmerFaction
+            0x000233F0, // SprigganFaction (Spriggans, Hagravens area)
+            0x0002C6C8, // GiantFaction
+            0x0002C69B, // HagravensHagravenFaction
+            0x000DDFAD, // RieklingFaction (Solstheim)
+            0x0002BA16, // WerewolfFaction
+            0x000C8DB3, // DragonFaction
+            0x00037E5C, // TrollFaction
+            0x000B2109, // FrostedTrollFaction
+            0x000E1643, // CrimeFactionBandit
+            0x000E1644, // CrimeFactionForsworn
+            0x000E1645, // CrimeFactionWarlock
+            0x00017009, // dunPlayerEnemyFaction
+        };
+
+        for (auto id : hostileFactions) {
             auto faction = RE::TESForm::LookupByID<RE::TESFaction>(id);
             if (faction && a_actor->IsInFaction(faction)) {
                 return true;
             }
         }
+
+        // 3. Base NPC form faction check (catches dungeon-specific variants
+        //    that aren't in the actor's runtime faction list)
+        auto base = a_actor->GetActorBase();
+        if (base) {
+            for (const auto& fData : base->factions) {
+                if (!fData.faction) continue;
+                for (auto id : hostileFactions) {
+                    if (fData.faction->GetFormID() == id) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         return false;
     }
+
+    // Legacy alias used internally — maps to the new expanded check
+    bool IsBanditLike(RE::Actor* a_actor) {
+        return IsHostileType(a_actor);
+    }
+
+
 
     enum class MercenaryClass {
         kMelee,
@@ -405,6 +463,17 @@ namespace Loyalty {
             avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 2.0f);  // Helps friends & allies
             avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
             avOwner->SetBaseActorValue(RE::ActorValue::kMorality, 0.0f); // Any Crime
+
+            // 6. CAN YENİLENMESİ (Health Regeneration)
+            // Vanilla NPC HealRate: ~0.7 (saniyede %0.7 = 140 saniyede tam can)
+            // Bizim değer: 3.0 (saniyede %3 = ~33 saniyede tam can, savaş dışında)
+            avOwner->SetBaseActorValue(RE::ActorValue::kHealRate, 3.0f);
+            // HealRateMult: savaş içi iyileşme hızı çarpanı (0-100 arası; 100=tam hız)
+            // 35 = normal hızın %35'i = savaş içinde de hafifçe iyileşir
+            avOwner->SetBaseActorValue(RE::ActorValue::kHealRateMult, 35.0f);
+            // Stamina yenilenmesi — silah sallamaya devam edebilsinler
+            avOwner->SetBaseActorValue(RE::ActorValue::kStaminaRate, 8.0f);
+            avOwner->SetBaseActorValue(RE::ActorValue::kStaminaRateMult, 100.0f);
         }
     }
 
@@ -567,31 +636,66 @@ namespace Loyalty {
                 }
             }
 
-            // Seviyeyi rüşvet miktarına (düşük teklif / yüksek teklif) göre motor seviyesinde güvenli niteliklerle ayarla
+            // ===========================================================
+            // STAT SCALING: Player-level-aware health system
+            // NPC health is set to a target based on the player's own max
+            // health, blended with the NPC's natural permanent value.
+            // A hard floor ensures low-level NPCs are always viable allies.
+            //
+            //   Low Bribe  → max(NPC_natural, PlayerHP * 0.80, 200)
+            //   High Bribe → max(NPC_natural, PlayerHP * 1.20, 350)
+            // ===========================================================
             {
                 auto avOwner = targetActor->AsActorValueOwner();
+                auto playerAVOwner = player ? player->AsActorValueOwner() : nullptr;
+
                 if (avOwner) {
-                    float currentMaxHP = avOwner->GetPermanentActorValue(RE::ActorValue::kHealth);
-                    float currentMaxMagicka = avOwner->GetPermanentActorValue(RE::ActorValue::kMagicka);
-                    float currentMaxStamina = avOwner->GetPermanentActorValue(RE::ActorValue::kStamina);
+                    float npcNatHP  = avOwner->GetPermanentActorValue(RE::ActorValue::kHealth);
+                    float npcNatMag = avOwner->GetPermanentActorValue(RE::ActorValue::kMagicka);
+                    float npcNatSta = avOwner->GetPermanentActorValue(RE::ActorValue::kStamina);
+
+                    // Player's own permanent stats (fallback to reasonable defaults)
+                    float playerHP  = playerAVOwner ? playerAVOwner->GetPermanentActorValue(RE::ActorValue::kHealth)   : 200.f;
+                    float playerMag = playerAVOwner ? playerAVOwner->GetPermanentActorValue(RE::ActorValue::kMagicka)  : 100.f;
+                    float playerSta = playerAVOwner ? playerAVOwner->GetPermanentActorValue(RE::ActorValue::kStamina)  : 100.f;
+
+                    float targetHP, targetMag, targetSta;
+                    float floorHP, floorMag, floorSta;
 
                     if (a_isLowOffer) {
-                        // Düşük rüşvet: Acemi nitelikleri (%25 Can ve Kondisyon azaltılır, motoru bozmaz)
-                        avOwner->SetBaseActorValue(RE::ActorValue::kHealth, (std::max)(currentMaxHP * 0.75f, 50.f));
-                        avOwner->SetBaseActorValue(RE::ActorValue::kMagicka, (std::max)(currentMaxMagicka * 0.75f, 50.f));
-                        avOwner->SetBaseActorValue(RE::ActorValue::kStamina, (std::max)(currentMaxStamina * 0.75f, 50.f));
-                        SKSE::log::info("[BRIBE_LEVEL] Scaled actor '{}' (FormID={:08X}) as Apprentice (HP={:.1f})", 
-                            targetActor->GetName(), targetActor->GetFormID(), (std::max)(currentMaxHP * 0.75f, 50.f));
+                        // Acemi: Oyuncu canının %80'i, en az 200 HP
+                        targetHP  = playerHP  * 0.80f;
+                        targetMag = playerMag * 0.75f;
+                        targetSta = playerSta * 0.75f;
+                        floorHP   = 200.f;
+                        floorMag  = 80.f;
+                        floorSta  = 80.f;
                     } else {
-                        // Yüksek rüşvet: Elit kıdemli nitelikleri (%35 Can ve Kondisyon artırılır)
-                        avOwner->SetBaseActorValue(RE::ActorValue::kHealth, currentMaxHP * 1.35f);
-                        avOwner->SetBaseActorValue(RE::ActorValue::kMagicka, currentMaxMagicka * 1.35f);
-                        avOwner->SetBaseActorValue(RE::ActorValue::kStamina, currentMaxStamina * 1.35f);
-                        SKSE::log::info("[BRIBE_LEVEL] Scaled actor '{}' (FormID={:08X}) as Veteran (HP={:.1f})", 
-                            targetActor->GetName(), targetActor->GetFormID(), currentMaxHP * 1.35f);
+                        // Kıdemli: Oyuncu canının %120'si, en az 350 HP
+                        targetHP  = playerHP  * 1.20f;
+                        targetMag = playerMag * 1.10f;
+                        targetSta = playerSta * 1.10f;
+                        floorHP   = 350.f;
+                        floorMag  = 120.f;
+                        floorSta  = 120.f;
                     }
+
+                    // Final value = max of (NPC's own natural, player-based target, hard floor)
+                    float finalHP  = (std::max)({ npcNatHP,  targetHP,  floorHP  });
+                    float finalMag = (std::max)({ npcNatMag, targetMag, floorMag });
+                    float finalSta = (std::max)({ npcNatSta, targetSta, floorSta });
+
+                    avOwner->SetBaseActorValue(RE::ActorValue::kHealth,  finalHP);
+                    avOwner->SetBaseActorValue(RE::ActorValue::kMagicka, finalMag);
+                    avOwner->SetBaseActorValue(RE::ActorValue::kStamina, finalSta);
+
+                    SKSE::log::info("[BRIBE_STATS] '{}' (FormID={:08X}) | Tier={} | NaturalHP={:.0f} | PlayerHP={:.0f} | FinalHP={:.0f}",
+                        targetActor->GetName(), targetActor->GetFormID(),
+                        a_isLowOffer ? "Apprentice" : "Veteran",
+                        npcNatHP, playerHP, finalHP);
                 }
             }
+
 
             EffectManager::GetSingleton()->PlayAcceptanceEffects(targetActor);
             
@@ -756,10 +860,16 @@ namespace Loyalty {
 
         auto avOwner = a_actor->AsActorValueOwner();
         if (avOwner) {
-            avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 1.0f);
+            // Yaratık/Ölümsüz tipler (Draugr vb.) için yüksek saldırganlık
+            // İnsan tipleri için normal saldırganlık
+            float aggressionVal = IsHostileType(a_actor) ? 2.0f : 1.0f;
+            avOwner->SetBaseActorValue(RE::ActorValue::kAggression, aggressionVal);
             avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 4.0f); // 4.0 = Korkusuz (Foolhardy)
             avOwner->SetBaseActorValue(RE::ActorValue::kAssistance, 0.0f);
             avOwner->SetBaseActorValue(RE::ActorValue::kWaitingForPlayer, 0.0f);
+            // Can/iyileşme hızını sıfırla
+            avOwner->SetBaseActorValue(RE::ActorValue::kHealRate, 0.7f);
+            avOwner->SetBaseActorValue(RE::ActorValue::kHealRateMult, 0.0f);
         }
 
         auto player = RE::PlayerCharacter::GetSingleton();
@@ -811,10 +921,24 @@ namespace Loyalty {
             a_actor->RemoveFromFaction(playerFaction);
         }
 
-        // Kovulduğunda tekrardan haydut grubuna katılsın ki diğer haydutlar ona saldırmasın
-        auto banditFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0001B0E4);
-        if (banditFaction) {
-            a_actor->AddToFaction(banditFaction, 0);
+        // Kovulduğunda aktörün orijinal base-form faction'larını geri yükle.
+        // Bu sayede Draugr dungeon faction'ına, Falmer kendi grubuna, haydutlar
+        // haydut grubuna otomatik olarak döner — her tür için hardcode gerekmez.
+        auto dismissBase = a_actor->GetActorBase();
+        if (dismissBase) {
+            for (const auto& fData : dismissBase->factions) {
+                if (fData.faction) {
+                    a_actor->AddToFaction(fData.faction, fData.rank >= 0 ? fData.rank : 0);
+                    SKSE::log::info("[DISMISS] Restored faction '{}' (FormID={:08X}) to '{}'",
+                        fData.faction->GetName(), fData.faction->GetFormID(), a_actor->GetName());
+                }
+            }
+        } else {
+            // Fallback: en azından haydut grubunu geri ekle
+            auto banditFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0001B0E4);
+            if (banditFaction) {
+                a_actor->AddToFaction(banditFaction, 0);
+            }
         }
 
         a_actor->DrawWeaponMagicHands(false);
