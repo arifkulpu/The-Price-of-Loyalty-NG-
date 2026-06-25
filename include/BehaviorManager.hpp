@@ -26,6 +26,7 @@ namespace Loyalty {
     private:
         BehaviorManager() = default;
 
+        static void ResetActorAI(RE::Actor* a_actor);
         static void HandleTreacherousBehavior(RE::Actor* a_actor);
         static void HandleHonorableBehavior(RE::Actor* a_actor);
         static void HandleGreedyBehavior(RE::Actor* a_actor);

@@ -152,6 +152,47 @@ namespace Loyalty {
         return false;
     }
 
+    // -----------------------------------------------------------------------
+    // ResetActorAI: Cleanly flushes all follower/combat AI state from an actor
+    // and schedules a deferred EvaluatePackage so NFF's Papyrus cleanup scripts
+    // can run first (preventing race-conditions on dismissal).
+    // -----------------------------------------------------------------------
+    void BehaviorManager::ResetActorAI(RE::Actor* a_actor) {
+        if (!a_actor) return;
+
+        // 1. Immediate state flush — clear any active look-at/head-track and combat
+        //    kResetAI flag tells the engine to flush the AI controller on next update
+        auto& runtimeFlags = a_actor->GetActorRuntimeData();
+        runtimeFlags.boolBits.set(RE::Actor::BOOL_BITS::kResetAI);
+        a_actor->StopInteractingQuick(true);
+        a_actor->StopCombat();
+        a_actor->DrawWeaponMagicHands(false);
+
+        auto processLists = RE::ProcessLists::GetSingleton();
+        if (processLists) {
+            processLists->StopCombatAndAlarmOnActor(a_actor, true);
+        }
+
+        // 2. First EvaluatePackage — immediate pass to pop the follower package stack
+        a_actor->EvaluatePackage(true, true);
+
+        // 3. Deferred second EvaluatePackage via SKSE task interface
+        //    This runs on the next game frame, AFTER NFF's Papyrus scripts have had
+        //    a chance to release their own follower tracking (faction-based).
+        RE::ActorHandle handle = a_actor->GetHandle();
+        SKSE::GetTaskInterface()->AddTask([handle]() {
+            auto actor = handle.get();
+            if (actor && !actor->IsDead()) {
+                actor->EvaluatePackage(true, true);
+                SKSE::log::info("[AI_RESET] Deferred EvaluatePackage executed for '{}' (FormID={:08X})",
+                    actor->GetName(), actor->GetFormID());
+            }
+        });
+
+        SKSE::log::info("[AI_RESET] ResetActorAI called for '{}' (FormID={:08X})", 
+            a_actor->GetName(), a_actor->GetFormID());
+    }
+
     bool IsBanditLike(RE::Actor* a_actor) {
         if (!a_actor) return false;
 
@@ -297,9 +338,15 @@ namespace Loyalty {
         if (potentialFollowerFaction) {
             a_actor->AddToFaction(potentialFollowerFaction, 0);
         }
+        // NFF COMPATIBILITY NOTE:
+        // NFF (Nether's Follower Framework) auto-detects followers by checking:
+        //   1. Actor is in CurrentFollowerFaction (0x0005C84E) with rank >= 1
+        //   2. Relationship rank with player is >= 3 (Ally)
+        // Both conditions are satisfied here, so NFF will auto-import our allies.
+        // On dismissal, removing this faction signals NFF to release its tracking.
         auto currentFollowerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005C84E);
         if (currentFollowerFaction) {
-            a_actor->AddToFaction(currentFollowerFaction, 0);
+            a_actor->AddToFaction(currentFollowerFaction, 1); // Rank 1 = actively following (NFF-compatible)
         }
         auto playerAllyFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x0005A1A4);
         if (playerAllyFaction) {
@@ -616,6 +663,10 @@ namespace Loyalty {
             if (player) {
                 // Setup ally factions, relationships, and unaggressive AI securely
                 SetupAllyFactionsAndAI(targetActor, player);
+                // ResetActorAI flushes any stale pre-recruitment AI state (combat, look-at)
+                // and schedules a deferred EvaluatePackage so NFF has one full frame
+                // to detect the new CurrentFollowerFaction rank and auto-import the ally.
+                ResetActorAI(targetActor);
                 player->StopCombat();
             }
 
@@ -767,7 +818,9 @@ namespace Loyalty {
         }
 
         a_actor->DrawWeaponMagicHands(false);
-        a_actor->EvaluatePackage(true, true);
+        // ResetActorAI flushes look-at, interaction, and combat state, then schedules
+        // a deferred EvaluatePackage so NFF has one game frame to release its tracking.
+        ResetActorAI(a_actor);
 
         bool isBandit = IsBanditLike(a_actor);
 
@@ -791,7 +844,7 @@ namespace Loyalty {
                         avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f); // Korkaklaştır
                     }
                     a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
-                    a_actor->EvaluatePackage(true, true);
+                    ResetActorAI(a_actor);
                     std::string runMsg = std::string(a_actor->GetName()) + " decided to run for their life!";
                     RE::DebugNotification(runMsg.c_str());
                 }
@@ -818,6 +871,10 @@ namespace Loyalty {
                 // İlişki durumunu düşman yerine Nötr (0) yapıyoruz ki saldırmasınlar
                 SetRelationshipRank(a_actor, player, 0);
             }
+
+            // Full AI reset — flush follower package, let NFF de-register, then
+            // re-evaluate so the NPC picks up their native sandbox/patrol package.
+            ResetActorAI(a_actor);
 
             std::string peaceDismissMsg = std::string(a_actor->GetName()) + " leaves peacefully and returns to their duties.";
             RE::DebugNotification(peaceDismissMsg.c_str());

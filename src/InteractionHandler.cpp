@@ -74,7 +74,7 @@ namespace Loyalty {
                     return;
                 }
 
-                if (targetActor->IsEssential()) {
+                if (targetActor->IsEssential() && !isMerchant) {
                     RE::DebugNotification("This individual cannot be bribed.");
                     return;
                 }
