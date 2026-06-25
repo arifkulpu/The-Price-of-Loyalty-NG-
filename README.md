@@ -189,10 +189,83 @@ bEnableBackstab=1
 
 ---
 
+---
+
 ## 🛠 Installation / Kurulum
 1.  Place `ThePriceOfLoyalty.dll` in your `Data/SKSE/Plugins` folder.
 2.  *(Optional)* Edit `ThePriceOfLoyalty.ini` in the same folder to customize hotkey, difficulty, and backstab settings. The file is **auto-created with defaults** on first launch.
 3.  Launch the game.
 
+---
+
+## 📋 Update Notes / Güncelleme Notları
+
+### v1.3.0 — 2026-06-25
+
+---
+
+#### 🇬🇧 English
+
+##### ⚔️ NFF (Nether's Follower Framework) Compatibility
+- Recruited NPCs are now fully compatible with NFF out of the box.
+- `CurrentFollowerFaction` rank is now set to **1** (actively following) instead of 0, which is the exact rank NFF polls to auto-import new followers into its management system.
+- On dismissal, the faction removal automatically signals NFF to cleanly release its tracking — no conflicts or ghost followers.
+
+##### 🧠 AI Behavior Reset System (`ResetActorAI`)
+- A new internal `ResetActorAI()` function was added to cleanly flush stale AI state whenever an NPC is recruited or dismissed.
+- On **recruitment**: clears any pre-existing combat lock, look-at target, and interaction state so the NPC immediately behaves as a fresh ally.
+- On **dismissal**: forces the NPC to fully exit follower AI mode and resume their original sandbox/patrol/shop package instead of freezing in place.
+- Uses the engine's `kResetAI` bit flag combined with a two-pass `EvaluatePackage` — one immediate and one deferred via the SKSE task interface — so NFF's Papyrus cleanup scripts get a full frame to run before the engine re-evaluates AI packages. This eliminates race conditions between the C++ plugin and NFF's Papyrus layer.
+
+##### 💪 Player-Level-Aware Health Scaling
+- Replaced the old flat-percentage health system with a dynamic, player-level-aware scaling formula.
+- Ally health is now computed as: `max(NPC_natural_health, PlayerHP × multiplier, hard_floor)`
+  - **Low Bribe (Apprentice):** `PlayerHP × 0.80`, minimum **200 HP**
+  - **High Bribe (Veteran):** `PlayerHP × 1.20`, minimum **350 HP**
+- This means allies always scale with your character's progression — a level 50 player will have genuinely powerful bodyguards, while a level 5 player still gets meaningful protection.
+- Magicka and Stamina follow the same scaling logic with their own multipliers and floors.
+- The log tag `[BRIBE_STATS]` now records natural HP, player HP, and final HP for easy debugging.
+
+##### 🩺 Automatic Health Regeneration
+- Recruited NPCs now automatically regenerate health, eliminating the need to manually cast healing spells on them between fights.
+- **Out of combat:** `HealRate = 3.0` → recovers approximately full health in ~33 seconds.
+- **In combat:** `HealRateMult = 35` → slow but steady in-combat regeneration (~1% per second), giving allies a fighting chance in prolonged battles.
+- **Stamina:** `StaminaRate = 8.0` → stamina recovers quickly so allies can keep swinging without running out mid-fight.
+- *(Vanilla NPC default for reference: `HealRate ≈ 0.7`, meaning full recovery takes ~140 seconds — effectively no regeneration.)*
+
+---
+
+#### 🇹🇷 Türkçe
+
+##### ⚔️ NFF (Nether's Follower Framework) Uyumluluğu
+- İşe alınan NPC'ler artık NFF ile kutu açılışında tam uyumlu çalışıyor.
+- `CurrentFollowerFaction` rank'ı artık 0 yerine **1** (aktif takip modunda) olarak ayarlanıyor. Bu tam olarak NFF'nin yeni takipçileri otomatik sisteme almak için kontrol ettiği rank.
+- Kovulma anında faction kaldırma işlemi NFF'ye otomatik sinyal gönderiyor ve NFF kendi takibini temiz biçimde bırakıyor — hayalet takipçi veya çakışma yok.
+
+##### 🧠 Yapay Zeka Davranış Sıfırlama Sistemi (`ResetActorAI`)
+- NPC işe alındığında veya kovulduğunda eski AI durumunu temizlemek için yeni bir dahili `ResetActorAI()` fonksiyonu eklendi.
+- **İşe alımda:** Önceki savaş kilidi, bak-at hedefi ve etkileşim durumu temizlenerek NPC anında yeni bir müttefik gibi davranmaya başlıyor.
+- **Kovulmada:** NPC'nin takipçi AI modundan tam olarak çıkması ve yerinde donup kalmak yerine özgün sandbox/devriye/dükkan paketine geri dönmesi sağlanıyor.
+- Motorun `kResetAI` bit bayrağı ile birlikte iki aşamalı `EvaluatePackage` kullanılıyor — biri anında, diğeri SKSE görev arayüzü üzerinden ertelenerek — NFF'nin Papyrus temizleme scriptleri çalışmadan önce motor AI paketlerini yeniden değerlendirmek zorunda kalmıyor. Bu, C++ eklentisi ile NFF'nin Papyrus katmanı arasındaki yarış koşullarını (race condition) tamamen ortadan kaldırıyor.
+
+##### 💪 Oyuncu Seviyesine Göre Can Ölçekleme
+- Eski sabit yüzde tabanlı can sistemi, dinamik ve oyuncu seviyesine duyarlı bir formülle değiştirildi.
+- Müttefik canı artık şu şekilde hesaplanıyor: `max(NPC_doğal_canı, OyuncuHP × çarpan, sabit_zemin)`
+  - **Düşük Rüşvet (Acemi):** `OyuncuHP × 0.80`, minimum **200 HP**
+  - **Yüksek Rüşvet (Kıdemli):** `OyuncuHP × 1.20`, minimum **350 HP**
+- Bu sayede müttefikler her zaman karakterinin gelişimiyle orantılı şekilde güçleniyor — 50. seviyedeki oyuncu gerçekten güçlü korumalar alırken, 5. seviyedeki oyuncu yine de anlamlı bir koruma elde ediyor.
+- Büyü ve Kondisyon değerleri de aynı mantıkla kendi çarpan ve zemin değerleriyle ölçekleniyor.
+- `[BRIBE_STATS]` log etiketi artık doğal HP, oyuncu HP ve nihai HP değerlerini kaydediyor.
+
+##### 🩺 Otomatik Can Yenilenmesi
+- İşe alınan NPC'ler artık otomatik olarak iyileşiyor; savaşlar arasında manuel şifa büyüsü atmana gerek kalmıyor.
+- **Savaş dışında:** `HealRate = 3.0` → yaklaşık 33 saniyede tam can.
+- **Savaş içinde:** `HealRateMult = 35` → yavaş ama istikrarlı savaş içi iyileşme (saniyede ~%1), müttefiklerin uzun çarpışmalarda hayatta kalma şansını artırıyor.
+- **Kondisyon:** `StaminaRate = 8.0` → kondisyon hızlı yenileniyor, müttefikler yorulmadan savaşmaya devam edebiliyor.
+- *(Referans için: Vanilla NPC varsayılanı `HealRate ≈ 0.7` — tam iyileşme ~140 saniye sürer, pratikte neredeyse hiç iyileşmiyorlar.)*
+
+---
+
 ## 📄 License / Lisans
 Copyright (c) 2026 Arif KULPU. All Rights Reserved. — Tüm Hakları Saklıdır. See [LICENSE](LICENSE.md) for details.
+
