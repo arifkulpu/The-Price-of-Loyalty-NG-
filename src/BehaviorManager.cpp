@@ -956,19 +956,38 @@ namespace Loyalty {
             int roll = dis(gen);
 
             if (player) {
+                RE::ActorHandle actorHandle = a_actor->GetHandle();
+                RE::ActorHandle playerHandle = player->GetHandle();
+
                 if (roll <= 50) {
-                    // Saldır
-                    StartCombat(a_actor, player);
+                    // Saldır — StartCombat'ı SKSE task olarak ertele.
+                    // ResetActorAI'nin ertelenmiş EvaluatePackage'ı bir sonraki
+                    // frame'de çalışır; biz de ondan sonra savaşı başlatıyoruz.
                     std::string attackMsg = std::string(a_actor->GetName()) + " is not happy about being dismissed and attacks!";
                     RE::DebugNotification(attackMsg.c_str());
+                    SKSE::GetTaskInterface()->AddTask([actorHandle, playerHandle]() {
+                        auto actor = actorHandle.get();
+                        auto playerActor = playerHandle.get();
+                        if (actor && playerActor && !actor->IsDead()) {
+                            StartCombat(actor.get(), playerActor.get());
+                            actor->EvaluatePackage(true, true);
+                            SKSE::log::info("[DISMISS] Deferred StartCombat executed for '{}'", actor->GetName());
+                        }
+                    });
                 } else {
                     // Kaç
                     if (avOwner) {
-                        avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f); // Korkaklaştır
-                        avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f); // Korkaklaştır
+                        avOwner->SetBaseActorValue(RE::ActorValue::kAggression, 0.0f);
+                        avOwner->SetBaseActorValue(RE::ActorValue::kConfidence, 0.0f);
                     }
-                    a_actor->InitiateFlee(player, true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
-                    ResetActorAI(a_actor);
+                    SKSE::GetTaskInterface()->AddTask([actorHandle, playerHandle]() {
+                        auto actor = actorHandle.get();
+                        auto playerActor = playerHandle.get();
+                        if (actor && playerActor && !actor->IsDead()) {
+                            actor->InitiateFlee(playerActor.get(), true, true, false, nullptr, nullptr, 0.0f, 2000.0f);
+                            actor->EvaluatePackage(true, true);
+                        }
+                    });
                     std::string runMsg = std::string(a_actor->GetName()) + " decided to run for their life!";
                     RE::DebugNotification(runMsg.c_str());
                 }
